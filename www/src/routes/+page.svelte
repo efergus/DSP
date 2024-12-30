@@ -4,17 +4,22 @@
 	import PauseCircle from '$lib/icons/PauseCircle.svelte';
 	import StopCircle from '$lib/icons/StopCircle.svelte';
 	import { onMount } from 'svelte';
+	import { context, dsp_greet } from '$lib/dsp/dsp';
+	import { combine, draw_waveform } from '$lib/audio/draw';
+	import { scale } from 'svelte/transition';
 
 	let width = 400;
 	let height = 200;
 
 	let audio_canvas: HTMLCanvasElement;
+	let spectrum_canvas: HTMLCanvasElement;
 	let audio_chunks: Float32Array[] = [];
 	let state: {
 		recording: boolean;
 		paused: boolean;
 		scrollX: number;
 		scrollY: number;
+		stream: MediaStream | null;
 		context: AudioContext | null;
 		node: AudioWorkletNode | null;
 		gain: GainNode | null;
@@ -23,42 +28,39 @@
 		paused: false,
 		scrollX: 0,
 		scrollY: 0,
+		stream: null,
 		context: null,
 		node: null,
 		gain: null
 	};
+	let fft_context = context();
+	let fft_window = new Float32Array(1024 * 4);
+	// size of an audio chunk (not configurable)
+	const CHUNK_SIZE = 128;
 
 	let draw_latest = (audio_chunks: Float32Array[]) => {
-		const context = audio_canvas.getContext('2d');
-		if (!context) {
+		if (!audio_chunks.length) {
+			return;
+		}
+		const audio_context = audio_canvas.getContext('2d');
+		const spectrum_context = spectrum_canvas.getContext('2d');
+		if (!audio_context || !spectrum_context) {
 			throw new Error('No context!');
 		}
 
-		context.fillStyle = 'rgb(200 200 200)';
-		context.fillRect(0, 0, width, height);
+		audio_context.fillStyle = 'rgb(200 200 200)';
+		audio_context.fillRect(0, 0, width, height);
 
-		context.lineWidth = 2;
-		context.strokeStyle = 'rgb(0 0 0)';
+		let latest = combine(audio_chunks.slice(-Math.floor(44100 / 128)));
+		draw_waveform(audio_context, latest);
 
-		const sample_width = Math.floor(44100 * Math.exp(state.scrollY / 1000));
-		const dx = width / sample_width;
-		let x = width + (state.scrollX * sample_width) / 1000000;
-		let y = height / 2;
+		combine(audio_chunks.slice(-fft_window.length / CHUNK_SIZE), fft_window);
+		let result = fft_context.fft_real(fft_window);
 
-		context.beginPath();
-		context.moveTo(x, y);
-		for (let chunk = audio_chunks.length - 1; chunk >= 0; chunk--) {
-			let data = audio_chunks[chunk];
-			for (let i = data.length - 1; i >= 0; i--) {
-				let dy = -(data[i] * height) / 2;
-				context.lineTo(x, y + dy);
-				x -= dx;
-			}
-			if (x <= 0) {
-				break;
-			}
-		}
-		context.stroke();
+		spectrum_context.fillStyle = 'rgb(200 200 200)';
+		spectrum_context.fillRect(0, 0, width, height);
+
+		draw_waveform(spectrum_context, result.slice(0, 256), { scale: -1 });
 	};
 
 	let record = async () => {
@@ -84,12 +86,13 @@
 		source.connect(node);
 		node.connect(gain);
 		gain.connect(audio_context.destination);
+		state.stream = stream;
 		state.context = audio_context;
 		state.node = node;
 		state.gain = gain;
 
 		node.port.onmessage = (e) => {
-			if (!state.paused) {
+			if (state.recording && !state.paused) {
 				audio_chunks.push(e.data[0]);
 			}
 		};
@@ -106,7 +109,13 @@
 		state.gain?.gain.linearRampToValueAtTime(gain, state.context.currentTime + 0.1);
 	};
 
-	let stop = async () => {};
+	let stop = async () => {
+		state.stream?.getAudioTracks().forEach((track) => {
+			track.enabled = false;
+		});
+		state.recording = false;
+		state.paused = false;
+	};
 
 	let sma_filter = (data: Float32Array, window_size: number) => {
 		let result = new Float32Array(data.length);
@@ -127,6 +136,8 @@
 		};
 		draw_loop();
 	});
+
+	console.log('greeting', dsp_greet(), fft_context);
 </script>
 
 <h1>Welcome to SvelteKit</h1>
@@ -139,10 +150,12 @@
 		}}
 	>
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
+		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
 	</div>
 	<div>
 		<button onclick={record} disabled={state.recording}><Circle /></button>
 		<button onclick={pause} disabled={!state.recording}><PauseCircle /></button>
+		<button onclick={stop} disabled={!state.recording}><StopCircle /></button>
 	</div>
 </div>
 

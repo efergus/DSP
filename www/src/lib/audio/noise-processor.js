@@ -13,7 +13,7 @@ class NoiseProcessor extends AudioWorkletProcessor {
             let input_channel = input[channel_idx];
             for (let i = 0; i < channel.length; i++) {
                 // let rand = (Math.random() * 2 - 1) * 0.003;
-                channel[i] = input_channel[i];
+                // channel[i] = input_channel[i];
             }
         });
         this.port.postMessage(inputs[0], [inputs[0][0].buffer, inputs[0][1].buffer]);

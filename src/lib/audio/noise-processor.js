@@ -1,5 +1,11 @@
 
 class NoiseProcessor extends AudioWorkletProcessor {
+    constructor(...args) {
+        super(...args);
+        this.port.onmessage = (e) => {
+            console.log("Message:", e.data);
+        }
+    }
     process(inputs, outputs, parameters) {
         const input = inputs[0];
         const output = outputs[0];
@@ -10,6 +16,7 @@ class NoiseProcessor extends AudioWorkletProcessor {
                 channel[i] = input_channel[i];
             }
         });
+        this.port.postMessage(inputs[0], [inputs[0][0].buffer, inputs[0][1].buffer]);
         return true;
     }
 }

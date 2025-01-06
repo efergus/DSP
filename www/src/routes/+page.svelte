@@ -7,14 +7,18 @@
 	import { context, dsp_greet } from '$lib/dsp/dsp';
 	import { combine, draw_waveform } from '$lib/audio/draw';
 	import { scale } from 'svelte/transition';
+	import { read } from '$app/server';
+	import Waveform from './Waveform.svelte';
+	import Spectrum from './Spectrum.svelte';
 
 	let width = 400;
 	let height = 200;
 
+	let audio_data: AudioBuffer | null = $state(null);
 	let audio_canvas: HTMLCanvasElement;
 	let spectrum_canvas: HTMLCanvasElement;
 	let audio_chunks: Float32Array[] = [];
-	let state: {
+	let state_old: {
 		recording: boolean;
 		paused: boolean;
 		scrollX: number;
@@ -37,6 +41,8 @@
 	let fft_window = new Float32Array(1024 * 4);
 	// size of an audio chunk (not configurable)
 	const CHUNK_SIZE = 128;
+	let scale_lin = $state({ x: 4.5, y: 0 });
+	let offset = $state(0);
 
 	let draw_latest = (audio_chunks: Float32Array[]) => {
 		if (!audio_chunks.length) {
@@ -64,10 +70,10 @@
 	};
 
 	let record = async () => {
-		if (state.recording) {
+		if (state_old.recording) {
 			return;
 		}
-		state.recording = true;
+		state_old.recording = true;
 
 		let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 		audio_chunks = [];
@@ -86,35 +92,49 @@
 		source.connect(node);
 		node.connect(gain);
 		gain.connect(audio_context.destination);
-		state.stream = stream;
-		state.context = audio_context;
-		state.node = node;
-		state.gain = gain;
+		state_old.stream = stream;
+		state_old.context = audio_context;
+		state_old.node = node;
+		state_old.gain = gain;
 
 		node.port.onmessage = (e) => {
-			if (state.recording && !state.paused) {
+			if (state_old.recording && !state_old.paused) {
 				audio_chunks.push(e.data[0]);
 			}
 		};
 		gain.gain.linearRampToValueAtTime(0.9, audio_context.currentTime + 0.5);
 	};
 
-	let pause = async () => {
-		if (!state.recording || !state.context) {
+	let play = async () => {
+		if (!audio_data) {
 			return;
 		}
-		state.paused = !state.paused;
-		let gain = state.paused ? 0.0 : 0.9;
+		// let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+		let audio_context = new AudioContext();
+		// let source = audio_context.createMediaStreamSource(stream);
+
+		let buffer_node = audio_context.createBufferSource();
+		buffer_node.buffer = audio_data;
+		buffer_node.connect(audio_context.destination);
+		buffer_node.start();
+	};
+
+	let pause = async () => {
+		if (!state_old.recording || !state_old.context) {
+			return;
+		}
+		state_old.paused = !state_old.paused;
+		let gain = state_old.paused ? 0.0 : 0.9;
 		console.log(gain);
-		state.gain?.gain.linearRampToValueAtTime(gain, state.context.currentTime + 0.1);
+		state_old.gain?.gain.linearRampToValueAtTime(gain, state_old.context.currentTime + 0.1);
 	};
 
 	let stop = async () => {
-		state.stream?.getAudioTracks().forEach((track) => {
+		state_old.stream?.getAudioTracks().forEach((track) => {
 			track.enabled = false;
 		});
-		state.recording = false;
-		state.paused = false;
+		state_old.recording = false;
+		state_old.paused = false;
 	};
 
 	let sma_filter = (data: Float32Array, window_size: number) => {
@@ -138,6 +158,13 @@
 	});
 
 	console.log('greeting', dsp_greet(), fft_context);
+
+	let audio_raw = $derived.by(() => {
+		// console.log(audio_data?.getChannelData(0)[0]);
+		return audio_data?.getChannelData(0);
+	});
+
+	// $effect(() => console.log({ audio_raw }));
 </script>
 
 <h1>Welcome to SvelteKit</h1>
@@ -145,17 +172,63 @@
 <div>
 	<div
 		onwheel={(e) => {
-			state.scrollX += e.deltaX;
-			state.scrollY += e.deltaY;
+			state_old.scrollX += e.deltaX;
+			state_old.scrollY += e.deltaY;
 		}}
 	>
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
+		{#if audio_raw}
+			<Waveform
+				data={audio_raw}
+				{offset}
+				limit={10 ** scale_lin.x}
+				scale={10 ** scale_lin.y}
+				onwheel={({ x, y }, e) => {
+					e.preventDefault();
+					if (e.shiftKey) {
+						scale_lin.y = Math.max(-0.4, Math.min(scale_lin.y + y / 500, 2));
+					} else {
+						scale_lin.x = Math.max(1, Math.min(scale_lin.x - y / 500, 8));
+					}
+					offset = Math.max(0, offset + x * 100);
+				}}
+			/>
+			<Spectrum data={audio_raw} {offset} size={1024} span={256} scale={height / 4} />
+		{/if}
 	</div>
 	<div>
-		<button onclick={record} disabled={state.recording}><Circle /></button>
-		<button onclick={pause} disabled={!state.recording}><PauseCircle /></button>
-		<button onclick={stop} disabled={!state.recording}><StopCircle /></button>
+		<input
+			type="file"
+			onchange={(e) => {
+				if (!e.target) {
+					return;
+				}
+				let files = (e.target as HTMLInputElement).files;
+				if (!files?.length) {
+					throw new Error('No files');
+				}
+				let file = files[0];
+				console.log(file);
+
+				let reader = new FileReader();
+				reader.onload = async (e) => {
+					if (!e.target) {
+						return;
+					}
+					const content = e.target.result;
+					let audio_context = new AudioContext();
+					audio_data = await audio_context.decodeAudioData(content as ArrayBuffer);
+					console.log(audio_data);
+				};
+
+				reader.readAsArrayBuffer(file);
+			}}
+		/>
+		<button onclick={play}>Play</button>
+		<button onclick={record} disabled={state_old.recording}><Circle /></button>
+		<button onclick={pause} disabled={!state_old.recording}><PauseCircle /></button>
+		<button onclick={stop} disabled={!state_old.recording}><StopCircle /></button>
 	</div>
 </div>
 

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { draw_waveform } from '$lib/audio/draw';
+	import { hann_index } from '$lib/audio/window';
 	import { context } from '$lib/dsp/dsp';
 	import { onMount } from 'svelte';
 
@@ -11,8 +12,11 @@
 		span = 256,
 		width = 400,
 		height = 200,
-		scale,
-		onwheel = () => {}
+		scale = 1,
+		hann = false,
+		pad,
+		onwheel = () => {},
+		onfft = () => {}
 	}: {
 		data: Float32Array;
 		size?: number;
@@ -22,22 +26,41 @@
 		width?: number;
 		height?: number;
 		scale?: number;
+		hann?: boolean;
+		pad?: number;
 		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
+		onfft?: (data: Float32Array) => void;
 	} = $props();
 
 	let fft_context = context();
 	let canvas: HTMLCanvasElement;
 
+	let fft_data = $derived.by(() => {
+		let slice = new Float32Array(Math.max(size, pad ?? 0));
+		slice.set(data.slice(offset, offset + size));
+		if (hann) {
+			for (let i = 0; i < size; i++) {
+				slice[i] *= hann_index(i, size);
+			}
+		}
+		return fft_context.fft_norm(slice);
+	});
+	$effect(() => onfft(fft_data));
+
 	onMount(() => {
 		let draw = () => {
 			const context = canvas.getContext('2d');
 			if (context) {
-				let result = fft_context.fft_real(data.slice(offset, offset + size));
 				context.fillStyle = 'rgb(200 200 200)';
 				context.fillRect(0, 0, width, height);
 				context.strokeStyle = 'black';
 				context.fillStyle = 'black';
-				draw_waveform(context, result, { offset: base, limit: span, scale, y: 0 });
+				draw_waveform(context, fft_data, {
+					offset: base,
+					limit: span,
+					scale: (scale * height) / 2,
+					y: 0
+				});
 			}
 			requestAnimationFrame(draw);
 		};

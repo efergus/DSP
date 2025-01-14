@@ -9,14 +9,16 @@
 		width = 400,
 		height = 200,
 		scale = 1,
+		cursor = 0,
 		onwheel = () => {}
 	}: {
-		data: Float32Array;
+		data: Float32Array | number[];
 		offset?: number;
 		limit?: number;
 		width?: number;
 		height?: number;
 		scale?: number;
+		cursor?: number;
 		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
 	} = $props();
 
@@ -30,6 +32,12 @@
 				context.fillRect(0, 0, width, height);
 				context.strokeStyle = 'black';
 				context.fillStyle = 'black';
+				if (cursor) {
+					let cursor_x = (cursor * width) / Math.min(limit, data.length);
+					context.moveTo(cursor_x, 0);
+					context.lineTo(cursor_x, height);
+					context.stroke();
+				}
 				draw_waveform(context, data, { offset, limit, scale: (scale * height) / 2 });
 			}
 			requestAnimationFrame(draw);

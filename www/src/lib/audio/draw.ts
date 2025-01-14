@@ -22,7 +22,7 @@ export function combine(values: Float32Array[], destination?: Float32Array) {
     return arr;
 }
 
-export function draw_waveform_envelope(context: CanvasRenderingContext2D, values: Float32Array, options: FilledWaveformOptions) {
+export function draw_waveform_envelope(context: CanvasRenderingContext2D, values: Float32Array | number[], options: FilledWaveformOptions) {
     const { limit: length, offset, scale, x, y, width } = options;
 
     const end = Math.min(offset + length, values.length)
@@ -60,7 +60,7 @@ export function draw_waveform_envelope(context: CanvasRenderingContext2D, values
     context.fill();
 }
 
-export function draw_waveform(context: CanvasRenderingContext2D, values: Float32Array, options: DrawWaveformOptions = {}) {
+export function draw_waveform(context: CanvasRenderingContext2D, values: Float32Array | number[], options: DrawWaveformOptions = {}) {
     const canvas = context.canvas;
     if (!values.length) {
         return;

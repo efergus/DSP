@@ -10,6 +10,8 @@
 	import { read } from '$app/server';
 	import Waveform from './Waveform.svelte';
 	import Spectrum from './Spectrum.svelte';
+	import { hann_windowed } from '$lib/audio/window';
+	import Spectrogram from './Spectrogram.svelte';
 
 	let width = 400;
 	let height = 200;
@@ -43,6 +45,9 @@
 	const CHUNK_SIZE = 128;
 	let scale_lin = $state({ x: 4.5, y: 0 });
 	let offset = $state(0);
+	let start_time = $state(0);
+	let sample_idx = $state(0);
+	let hann = $state(false);
 
 	let draw_latest = (audio_chunks: Float32Array[]) => {
 		if (!audio_chunks.length) {
@@ -61,7 +66,7 @@
 		draw_waveform(audio_context, latest);
 
 		combine(audio_chunks.slice(-fft_window.length / CHUNK_SIZE), fft_window);
-		let result = fft_context.fft_real(fft_window);
+		let result = fft_context.fft_norm(fft_window);
 
 		spectrum_context.fillStyle = 'rgb(200 200 200)';
 		spectrum_context.fillRect(0, 0, width, height);
@@ -117,6 +122,16 @@
 		buffer_node.buffer = audio_data;
 		buffer_node.connect(audio_context.destination);
 		buffer_node.start();
+
+		let timer = (timestamp: DOMHighResTimeStamp) => {
+			if (!start_time) {
+				start_time = timestamp;
+			} else {
+				sample_idx = (timestamp - start_time) * 44.1;
+			}
+			requestAnimationFrame(timer);
+		};
+		requestAnimationFrame(timer);
 	};
 
 	let pause = async () => {
@@ -125,7 +140,6 @@
 		}
 		state_old.paused = !state_old.paused;
 		let gain = state_old.paused ? 0.0 : 0.9;
-		console.log(gain);
 		state_old.gain?.gain.linearRampToValueAtTime(gain, state_old.context.currentTime + 0.1);
 	};
 
@@ -149,6 +163,35 @@
 		return result;
 	};
 
+	let sin_buffer = (freq = 440, samplerate = 44100) => {
+		let res = new Float32Array(samplerate);
+		for (let i = 0; i < res.length; i++) {
+			// res[i] = Math.sin((2 * Math.PI * i * 4) / 1024);
+			res[i] = Math.sin((2 * Math.PI * i * freq) / samplerate);
+		}
+		return res;
+	};
+
+	let chirp_buffer = (base_freq = 20, peak_freq = 1000, samplerate = 44100) => {
+		let res = new Float32Array(samplerate * 6);
+		let phase = 0;
+		for (let i = 0; i < res.length; i++) {
+			let current_freq =
+				base_freq + (peak_freq - base_freq) * (1 - 0.5 * Math.sin((2 * Math.PI * i) / samplerate));
+			res[i] = Math.sin(2 * Math.PI * phase);
+			phase += current_freq / samplerate;
+		}
+		return res;
+	};
+
+	let load_sin = () => {
+		// let buffer = sin_buffer();
+		let buffer = chirp_buffer();
+		let data = new AudioBuffer({ length: buffer.length, sampleRate: 44100 });
+		data.copyToChannel(buffer, 0);
+		audio_data = data;
+	};
+
 	onMount(() => {
 		let draw_loop = () => {
 			draw_latest(audio_chunks);
@@ -157,14 +200,41 @@
 		draw_loop();
 	});
 
-	console.log('greeting', dsp_greet(), fft_context);
-
 	let audio_raw = $derived.by(() => {
-		// console.log(audio_data?.getChannelData(0)[0]);
 		return audio_data?.getChannelData(0);
 	});
 
-	// $effect(() => console.log({ audio_raw }));
+	let fft_peaks = $derived.by(() => {
+		if (!audio_data) {
+			return [];
+		}
+		let data = audio_data.getChannelData(0);
+		let i = 0;
+		let peaks = [];
+		while (i < data.length - 256) {
+			let windowed = hann_windowed(data.slice(i, i + 256), 1024);
+			let peak = fft_context.fft_peak(windowed);
+			peaks.push(peak / 512);
+			i += 128;
+		}
+		return peaks;
+	});
+
+	let fft_spectrogram = $derived.by(() => {
+		if (!audio_data) {
+			return [];
+		}
+		let data = audio_data.getChannelData(0);
+		let i = 0;
+		let spectrogram = [];
+		while (i < data.length - 256) {
+			let windowed = hann_windowed(data.slice(i, i + 512), 1024);
+			let fft = fft_context.fft_norm(windowed);
+			spectrogram.push(fft);
+			i += 128;
+		}
+		return spectrogram;
+	});
 </script>
 
 <h1>Welcome to SvelteKit</h1>
@@ -191,10 +261,32 @@
 					} else {
 						scale_lin.x = Math.max(1, Math.min(scale_lin.x - y / 500, 8));
 					}
-					offset = Math.max(0, offset + x * 100);
+					offset = Math.floor(Math.max(0, offset + (x / width / 2) * 10 ** scale_lin.x));
 				}}
 			/>
-			<Spectrum data={audio_raw} {offset} size={1024} span={256} scale={height / 4} />
+			<Spectrum
+				data={audio_raw}
+				{offset}
+				size={256}
+				span={1024}
+				scale={0.5}
+				pad={4096 * 4}
+				{hann}
+				onfft={(data) => {
+					let peak = 0;
+					let peak_idx = 0;
+					for (let i = 0; i < data.length; i++) {
+						if (data[i] > peak) {
+							peak = data[i];
+							peak_idx = i;
+						}
+					}
+					let f = (n: number) => (n * 22050) / (data.length - 1);
+					console.log('peak', data.length, peak_idx, f(peak_idx), f(peak_idx - 1), f(peak_idx + 1));
+				}}
+			/>
+			<Waveform data={fft_peaks} limit={10000} scale={6} cursor={sample_idx / 128} />
+			<Spectrogram data={fft_spectrogram} />
 		{/if}
 	</div>
 	<div>
@@ -209,7 +301,6 @@
 					throw new Error('No files');
 				}
 				let file = files[0];
-				console.log(file);
 
 				let reader = new FileReader();
 				reader.onload = async (e) => {
@@ -219,16 +310,17 @@
 					const content = e.target.result;
 					let audio_context = new AudioContext();
 					audio_data = await audio_context.decodeAudioData(content as ArrayBuffer);
-					console.log(audio_data);
 				};
 
 				reader.readAsArrayBuffer(file);
 			}}
 		/>
-		<button onclick={play}>Play</button>
+		<button class="gray" onclick={load_sin}>Sin</button>
+		<button class="gray" onclick={play}>Play</button>
 		<button onclick={record} disabled={state_old.recording}><Circle /></button>
 		<button onclick={pause} disabled={!state_old.recording}><PauseCircle /></button>
 		<button onclick={stop} disabled={!state_old.recording}><StopCircle /></button>
+		<input type="checkbox" bind:checked={hann} />
 	</div>
 </div>
 
@@ -236,5 +328,9 @@
 	button {
 		background-color: white;
 		border: 0px;
+	}
+
+	.gray {
+		background-color: gray;
 	}
 </style>

@@ -1,5 +1,7 @@
 mod utils;
 
+use std::collections::HashMap;
+
 use realfft::RealFftPlanner;
 use wasm_bindgen::prelude::*;
 
@@ -33,7 +35,7 @@ impl FftContext {
         result
     }
 
-    pub fn fft_real(&mut self, mut signal: std::vec::Vec<f32>) -> std::vec::Vec<f32> {
+    pub fn fft_norm(&mut self, mut signal: std::vec::Vec<f32>) -> std::vec::Vec<f32> {
         let plan = self.planner.plan_fft_forward(signal.len());
         let mut output = plan.make_output_vec();
         plan.process(&mut signal, &mut output).expect("FFT failed");
@@ -42,6 +44,21 @@ impl FftContext {
             result.push(num.norm());
         }
         result
+    }
+
+    pub fn fft_peak(&mut self, mut signal: std::vec::Vec<f32>) -> usize {
+        let result = self.fft_norm(signal);
+        let mut peak: f32 = 0.0;
+        let mut peak_idx: usize = 0;
+
+        for (i, val) in result.iter().enumerate() {
+            if (*val > peak) {
+                peak = *val;
+                peak_idx = i;
+            }
+        }
+
+        peak_idx
     }
 }
 

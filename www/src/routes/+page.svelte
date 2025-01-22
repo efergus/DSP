@@ -16,12 +16,16 @@
 	import {
 		angular_biquad_filter,
 		apply_iir,
-		example_filter,
+		example_filter_values,
+		iir_filter,
 		notch_pass_filter,
 		notch_reject_filter,
 		single_pole_high_pass,
 		single_pole_low_pass
 	} from '$lib/audio/filter';
+	import PoleZeroPlot from './PoleZeroPlot.svelte';
+	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
+	import { addConjugates, Iir } from '$lib/audio/iir';
 
 	let width = 400;
 	let height = 200;
@@ -246,18 +250,43 @@
 		return pitches;
 	});
 
-	let range_value = $state('');
-	let range_value2 = $state('');
+	let range_value = $state('0');
+	let range_value2 = $state('0');
 	let freq = $derived(Number(range_value) || 440 / 44100);
 	let bw = $derived(Number(range_value2) / 10 || 1 / 32);
-	let whatever = $derived(Number(range_value) || 0.0);
-	let whatever2 = $derived(Number(range_value2) * 2 || 0.0);
+	let whatever = $derived(Number(range_value) * Math.PI || 0.0);
+	let whatever2 = $derived(Number(range_value2) || 0.0);
+	// let poles = $derived(addConjugates([complex_polar(whatever, whatever2)]));
+	// let zeros = $derived(addConjugates([complex_polar(whatever, 1)]));
+	let { zeros, poles } = example_filter_values();
+	let filter = $derived(new Iir(zeros, poles));
+	let response = $derived.by(() => {
+		let arr = new Float32Array(100);
+		for (let i = 0; i < 100; i++) {
+			// arr[i] = complex_norm(filter.response(i / 200));
+			arr[i] = filter.response_norm(i / 200);
+		}
+		console.log(filter._forward);
+		console.log(filter._back);
+		return arr;
+	});
+	let response_phase = $derived.by(() => {
+		let arr = new Float32Array(100);
+		for (let i = 0; i < 100; i++) {
+			arr[i] = filter.response_phase(i / 200);
+		}
+		return arr;
+	});
 
 	let filter_impulse = $derived.by(() => {
 		// console.log(whatever, whatever2);
 		// let filter = example_filter();
-		let filter = angular_biquad_filter(whatever, 1, whatever, whatever2);
-		console.log(filter);
+		// let filter = angular_biquad_filter(whatever, 1, whatever, whatever2);
+		let filter = iir_filter(zeros, poles);
+		console.log(filter.forward);
+		console.log(filter.back);
+		console.log(2 * Math.cos(whatever), 2 * Math.cos(whatever) * whatever2, whatever2 ** 2);
+
 		// let filter = notch_reject_filter(freq, bw);
 		// let filter = single_pole_high_pass(0.86);
 		let data = new Float32Array(256);
@@ -304,6 +333,9 @@
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
 		<Waveform data={filter_impulse} limit={10000} scale={0.5} />
 		<Spectrum data={filter_impulse} size={256} scale={0.2} />
+		<PoleZeroPlot {zeros} {poles} />
+		<Waveform data={response} scale={0.3} />
+		<Waveform data={response_phase} scale={0.3} />
 		{#if audio_raw}
 			<Waveform
 				data={audio_raw}
@@ -378,8 +410,8 @@
 		<button onclick={pause} disabled={!state_old.recording}><PauseCircle /></button>
 		<button onclick={stop} disabled={!state_old.recording}><StopCircle /></button>
 		<input type="checkbox" bind:checked={hann} />
-		<input type="range" min="0" max="0.5" step="0.01" bind:value={range_value} />
-		<input type="range" min="0" max="0.5" step="0.01" bind:value={range_value2} />
+		<input type="range" min="0" max="1" step="0.01" bind:value={range_value} />
+		<input type="range" min="0" max="1" step="0.01" bind:value={range_value2} />
 	</div>
 </div>
 

@@ -1,10 +1,7 @@
+import { complex, complex_add, complex_mul, complex_mul_scalar, complex_norm2, complex_polar, type Complex } from "./complex";
+import { realCoefficients } from "./iir";
 
 type NumArr = number[] | Float32Array | Float64Array;
-
-type Complex = {
-    re: number;
-    im: number;
-};
 
 type IIRFilter = {
     forward: number[];
@@ -13,43 +10,6 @@ type IIRFilter = {
 }
 
 type Polynomial<T = number> = T[];
-
-export function complex(re: number = 0, im: number = 0) {
-    return { re, im };
-}
-
-export function complex_polar(radius: number, angle: number) {
-    // console.log(radius, angle);
-    return {
-        re: Math.cos(angle) * radius,
-        im: Math.sin(angle) * radius
-    }
-}
-
-export function complex_add(a: Complex, b: Complex) {
-    return { re: a.re + b.re, im: a.im + b.im }
-}
-
-export function complex_mul(a: Complex, b: Complex) {
-    return { re: a.re * b.re - a.im * b.im, im: a.re * b.im + a.im * b.re }
-}
-
-export function complex_mul_scalar(a: Complex, scalar: number) {
-    return { re: a.re * scalar, im: a.im * scalar }
-}
-
-export function complex_conjugate(val: Complex) {
-    return { re: val.re, im: -val.im }
-}
-
-export function complex_norm(val: Complex) {
-    return Math.sqrt(val.re ** 2 + val.im ** 2);
-}
-
-export function complex_norm2(val: Complex) {
-    return val.re ** 2 + val.im ** 2;
-}
-
 export function filter_from_coefficients(forward: number[], back: number[]) {
     let scale = (x: number) => x / back[0];
     return {
@@ -179,45 +139,16 @@ export function angular_biquad_filter(zero_freq: number, zero_radius: number, po
     return filter;
 }
 
-export function example_filter() {
-    let zeros = new Array(3).fill(0).map((_, i) => complex_polar(-0.5, Math.PI * 2 * i / 3));
-    let poles = new Array(5).fill(0).map((_, i) => complex_polar(-0.9, Math.PI * 2 * i / 5));
-    let complex_poles = poles.filter(x => x.im > 0);
-    let real_poles = poles.filter(x => x.im === 0).map(x => x.re);
-    let complex_zeros = zeros.filter(x => x.im > 0);
-    let real_zeros = zeros.filter(x => x.im === 0).map(x => x.re);
-
-    // let root_1 = complex_polar(-0.5, Math.PI * 2 * 1 / 3)
-    // let complex_conjugate_roots_polynomial = polynomial_with_roots([root_1, complex_conjugate(root_1)])
-
-    let pole_polynomial = polynomial_with_roots(poles);
-    // console.log({ pole_polynomial })
-
-    let pole_polynomial2 = polynomial_with_conjugate_roots(complex_poles, real_poles);
-    let zero_polynomial2 = polynomial_with_conjugate_roots(complex_zeros, real_zeros);
-    // console.log({ pole_polynomial2 })
-
-    let zero_polynomial = polynomial_with_roots(zeros);
-    // console.log({ pole_polynomial2, zero_polynomial, zero_polynomial2 })
-
-    return {
-        forward: zero_polynomial2,
-        back: pole_polynomial2.slice(1),
-        gain: 1
-    }
+export function example_filter_values() {
+    let zeros = new Array(3).fill(0).map((_, i) => complex_polar(Math.PI * 2 * i / 3, -0.5));
+    let poles = new Array(5).fill(0).map((_, i) => complex_polar(Math.PI * 2 * i / 5, -0.9));
+    return { zeros, poles };
 }
 
 export function iir_filter(zeros: Complex[], poles: Complex[]) {
-    let complex_zeros = zeros.filter(x => x.im != 0);
-    let real_zeros = zeros.filter(x => x.im === 0).map(x => x.re);
-    let complex_poles = poles.filter(x => x.im !== 0);
-    let real_poles = poles.filter(x => x.im === 0).map(x => x.re);
-    let filter = {
-        forward: polynomial_with_conjugate_roots(complex_zeros, real_zeros),
-        back: polynomial_with_conjugate_roots(complex_poles, real_poles).slice(1),
-        gain: 1
-    }
-    return filter;
+    let forward = realCoefficients(zeros);
+    let back = realCoefficients(poles);
+    return filter_from_coefficients(forward, back);
 }
 
 export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): number {
@@ -226,7 +157,7 @@ export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): num
         y += input[input.length - 1 - i] * filter.forward[i] * filter.gain;
     }
     for (let i = 0; i < Math.min(filter.back.length, output.length); i++) {
-        y += output[output.length - 1 - i] * filter.back[i];
+        y -= output[output.length - 1 - i] * filter.back[i];
     }
     return y;
 }

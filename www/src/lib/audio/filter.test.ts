@@ -1,5 +1,6 @@
 import { test, expect } from "vitest";
-import { complex, mul_polynomials, polynomial_with_conjugate_roots } from "./filter";
+import { mul_polynomials, polynomial_with_conjugate_roots } from "./filter";
+import { complex } from "./complex";
 
 // todo: test linearity, reversal, commutivity
 test('polynomial multiplication', () => {

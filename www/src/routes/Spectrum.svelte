@@ -58,7 +58,7 @@
 				draw_waveform(context, fft_data, {
 					offset: base,
 					limit: span,
-					scale: (scale * height) / 2,
+					scale: scale * height,
 					y: 0
 				});
 			}

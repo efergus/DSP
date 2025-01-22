@@ -12,6 +12,16 @@
 	import Spectrum from './Spectrum.svelte';
 	import { hann_windowed } from '$lib/audio/window';
 	import Spectrogram from './Spectrogram.svelte';
+	import { zero_crossing_median } from '$lib/audio/pitch';
+	import {
+		angular_biquad_filter,
+		apply_iir,
+		example_filter,
+		notch_pass_filter,
+		notch_reject_filter,
+		single_pole_high_pass,
+		single_pole_low_pass
+	} from '$lib/audio/filter';
 
 	let width = 400;
 	let height = 200;
@@ -205,19 +215,63 @@
 	});
 
 	let fft_peaks = $derived.by(() => {
-		if (!audio_data) {
+		if (!audio_raw) {
 			return [];
 		}
-		let data = audio_data.getChannelData(0);
 		let i = 0;
 		let peaks = [];
-		while (i < data.length - 256) {
-			let windowed = hann_windowed(data.slice(i, i + 256), 1024);
+		while (i < audio_raw.length - 256) {
+			let windowed = hann_windowed(audio_raw.slice(i, i + 256), 1024);
 			let peak = fft_context.fft_peak(windowed);
 			peaks.push(peak / 512);
 			i += 128;
 		}
 		return peaks;
+	});
+
+	let crossing_pitches = $derived.by(() => {
+		if (!audio_raw) {
+			return [];
+		}
+		let pitches = [];
+		for (let i = 0; i < audio_raw.length - 512; i += 256) {
+			let crossing_distance = zero_crossing_median(audio_raw.slice(i, i + 512));
+			if (!crossing_distance) {
+				continue;
+			}
+			let freq = 1 / (crossing_distance * 2);
+			pitches.push(freq);
+			// console.log(freq);
+		}
+		return pitches;
+	});
+
+	let range_value = $state('');
+	let range_value2 = $state('');
+	let freq = $derived(Number(range_value) || 440 / 44100);
+	let bw = $derived(Number(range_value2) / 10 || 1 / 32);
+	let whatever = $derived(Number(range_value) || 0.0);
+	let whatever2 = $derived(Number(range_value2) * 2 || 0.0);
+
+	let filter_impulse = $derived.by(() => {
+		// console.log(whatever, whatever2);
+		// let filter = example_filter();
+		let filter = angular_biquad_filter(whatever, 1, whatever, whatever2);
+		console.log(filter);
+		// let filter = notch_reject_filter(freq, bw);
+		// let filter = single_pole_high_pass(0.86);
+		let data = new Float32Array(256);
+		let output = new Float32Array(256);
+		data[0] = 1.0;
+		for (let i = 0; i < data.length; i++) {
+			output[i] = apply_iir(filter, data.slice(0, i + 1), output.slice(0, i));
+		}
+		return output;
+	});
+
+	let notch_freq = $derived.by(() => {
+		let result = fft_context.fft_norm(filter_impulse);
+		return result;
 	});
 
 	let fft_spectrogram = $derived.by(() => {
@@ -228,7 +282,7 @@
 		let i = 0;
 		let spectrogram = [];
 		while (i < data.length - 256) {
-			let windowed = hann_windowed(data.slice(i, i + 512), 1024);
+			let windowed = hann_windowed(data.slice(i, i + 256), 1024);
 			let fft = fft_context.fft_norm(windowed);
 			spectrogram.push(fft);
 			i += 128;
@@ -248,6 +302,8 @@
 	>
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
+		<Waveform data={filter_impulse} limit={10000} scale={0.5} />
+		<Spectrum data={filter_impulse} size={256} scale={0.2} />
 		{#if audio_raw}
 			<Waveform
 				data={audio_raw}
@@ -285,7 +341,8 @@
 					console.log('peak', data.length, peak_idx, f(peak_idx), f(peak_idx - 1), f(peak_idx + 1));
 				}}
 			/>
-			<Waveform data={fft_peaks} limit={10000} scale={6} cursor={sample_idx / 128} />
+			<Waveform data={fft_peaks} limit={10000} scale={6} cursor={offset / 128} />
+			<Waveform data={crossing_pitches} limit={10000} scale={6} cursor={offset / 256} />
 			<Spectrogram data={fft_spectrogram} />
 		{/if}
 	</div>
@@ -321,6 +378,8 @@
 		<button onclick={pause} disabled={!state_old.recording}><PauseCircle /></button>
 		<button onclick={stop} disabled={!state_old.recording}><StopCircle /></button>
 		<input type="checkbox" bind:checked={hann} />
+		<input type="range" min="0" max="0.5" step="0.01" bind:value={range_value} />
+		<input type="range" min="0" max="0.5" step="0.01" bind:value={range_value2} />
 	</div>
 </div>
 

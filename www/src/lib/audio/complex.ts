@@ -5,17 +5,32 @@ export type Complex = {
     im: number;
 };
 
+export type Polar = {
+    norm: number;
+    phase: number;
+}
 
-export function complex(re: number = 0, im: number = 0) {
+
+export function complex(re: number = 0, im: number = 0): Complex {
     return { re, im };
 }
 
-export function complex_polar(angle: number, radius: number = 1) {
-    // console.log(radius, angle);
+export function complex_polar(angle: number, radius: number = 1): Complex {
     return {
         re: Math.cos(angle) * radius,
         im: Math.sin(angle) * radius
     }
+}
+
+export function complex_to_polar(val: Complex): Polar {
+    return {
+        norm: complex_norm(val),
+        phase: complex_phase(val)
+    }
+}
+
+export function polar_to_complex(val: Polar): Complex {
+    return complex_polar(val.phase, val.norm);
 }
 
 export function complex_add(a: Complex, b: Complex) {
@@ -31,7 +46,7 @@ export function complex_mul(a: Complex, b: Complex) {
 }
 
 export function complex_mul_scalar(a: Complex, scalar: number) {
-    return { re: a.re * scalar, im: a.im * scalar }
+    return complex(a.re * scalar, a.im * scalar)
 }
 
 export function complex_div(a: Complex, b: Complex) {
@@ -40,6 +55,10 @@ export function complex_div(a: Complex, b: Complex) {
         re: (a.re * b.re + a.im * b.im) / norm,
         im: (a.im * b.re - a.re * b.im) / norm
     }
+}
+
+export function complex_div_scalar(a: Complex, scalar: number) {
+    return complex(a.re / scalar, a.im / scalar);
 }
 
 export function complex_conjugate(val: Complex) {
@@ -54,8 +73,24 @@ export function complex_norm2(val: Complex) {
     return val.re ** 2 + val.im ** 2;
 }
 
+export function complex_dist(a: Complex, b: Complex) {
+    return complex_norm(complex_sub(a, b));
+}
+
 export function complex_phase(val: Complex) {
     return Math.atan2(val.im, val.re);
+}
+
+export function rad_to_degrees(rad: number) {
+    return rad * 180 / Math.PI;
+}
+
+export function degrees_to_rad(degrees: number) {
+    return degrees * Math.PI / 180;
+}
+
+export function complex_degrees(val: Complex) {
+    return rad_to_degrees(complex_phase(val));
 }
 
 export function complex_to_real(val: Complex) {

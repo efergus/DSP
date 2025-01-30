@@ -10,7 +10,7 @@
 	import { read } from '$app/server';
 	import Waveform from './Waveform.svelte';
 	import Spectrum from './Spectrum.svelte';
-	import { hann_windowed } from '$lib/audio/window';
+	import { apply_hann_window, hann_windowed, pad, rotated } from '$lib/audio/window';
 	import Spectrogram from './Spectrogram.svelte';
 	import { zero_crossing_median } from '$lib/audio/pitch';
 	import {
@@ -26,6 +26,7 @@
 	import PoleZeroPlot from './PoleZeroPlot.svelte';
 	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
 	import { addConjugates, Iir } from '$lib/audio/iir';
+	import PoleZeroEditor from './PoleZeroEditor.svelte';
 
 	let width = 400;
 	let height = 200;
@@ -250,24 +251,35 @@
 		return pitches;
 	});
 
-	let range_value = $state('0');
-	let range_value2 = $state('0');
+	let range_value = $state('0.5');
+	let range_value2 = $state('0.5');
 	let freq = $derived(Number(range_value) || 440 / 44100);
 	let bw = $derived(Number(range_value2) / 10 || 1 / 32);
 	let whatever = $derived(Number(range_value) * Math.PI || 0.0);
 	let whatever2 = $derived(Number(range_value2) || 0.0);
-	// let poles = $derived(addConjugates([complex_polar(whatever, whatever2)]));
-	// let zeros = $derived(addConjugates([complex_polar(whatever, 1)]));
-	let { zeros, poles } = example_filter_values();
+	let roots = $state(
+		[complex_polar(0.4, 1)]
+			.map((val) => ({
+				state: 0,
+				val
+			}))
+			.concat(
+				[complex_polar(0.4, 0.8)].map((val) => ({
+					state: 1,
+					val
+				}))
+			)
+	);
+	let zeros = $state([complex(0, 0)]);
+	let poles = $state([complex(0, 0)]);
+	// let { zeros, poles } = example_filter_values();
 	let filter = $derived(new Iir(zeros, poles));
 	let response = $derived.by(() => {
-		let arr = new Float32Array(100);
-		for (let i = 0; i < 100; i++) {
-			// arr[i] = complex_norm(filter.response(i / 200));
-			arr[i] = filter.response_norm(i / 200);
+		let points = 200;
+		let arr = new Float32Array(points);
+		for (let i = 0; i < points; i++) {
+			arr[i] = filter.response_norm(i / points / 2);
 		}
-		console.log(filter._forward);
-		console.log(filter._back);
 		return arr;
 	});
 	let response_phase = $derived.by(() => {
@@ -277,18 +289,10 @@
 		}
 		return arr;
 	});
+	let response_magnitude = $derived(response.reduce((a, b) => Math.max(a, b)));
 
 	let filter_impulse = $derived.by(() => {
-		// console.log(whatever, whatever2);
-		// let filter = example_filter();
-		// let filter = angular_biquad_filter(whatever, 1, whatever, whatever2);
 		let filter = iir_filter(zeros, poles);
-		console.log(filter.forward);
-		console.log(filter.back);
-		console.log(2 * Math.cos(whatever), 2 * Math.cos(whatever) * whatever2, whatever2 ** 2);
-
-		// let filter = notch_reject_filter(freq, bw);
-		// let filter = single_pole_high_pass(0.86);
 		let data = new Float32Array(256);
 		let output = new Float32Array(256);
 		data[0] = 1.0;
@@ -297,6 +301,25 @@
 		}
 		return output;
 	});
+
+	let half_step_down = $derived.by(() => {
+		let arr = new Float32Array(257);
+		for (let idx = 0; idx < (arr.length * whatever) / 2; idx += 2) {
+			arr[idx] = 1.0;
+		}
+		return arr;
+	});
+
+	let half_step_down_inverse = $derived(fft_context.fft_inverse(half_step_down));
+	let convolution_size = $derived(Math.ceil(whatever2 * 200) + 1);
+	let step_inverse_rotated = $derived(
+		rotated(half_step_down_inverse, Math.ceil(convolution_size / 2)).slice(0, convolution_size)
+	);
+	// console.log(half_step_down_inverse);
+	let half_step_down_windowed = $derived(hann_windowed(step_inverse_rotated));
+	let half_step_down_windowed_fft = $derived(
+		fft_context.fft_norm(pad(half_step_down_windowed, 256))
+	);
 
 	let notch_freq = $derived.by(() => {
 		let result = fft_context.fft_norm(filter_impulse);
@@ -320,9 +343,7 @@
 	});
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
-<div>
+<div id="rootdiv">
 	<div
 		onwheel={(e) => {
 			state_old.scrollX += e.deltaX;
@@ -333,9 +354,21 @@
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
 		<Waveform data={filter_impulse} limit={10000} scale={0.5} />
 		<Spectrum data={filter_impulse} size={256} scale={0.2} />
-		<PoleZeroPlot {zeros} {poles} />
-		<Waveform data={response} scale={0.3} />
+		<PoleZeroEditor
+			bind:roots
+			onchange={(z, p) => {
+				zeros = z;
+				poles = p;
+			}}
+		/>
+		<Waveform data={response} scale={0.9 / response_magnitude} />
 		<Waveform data={response_phase} scale={0.3} />
+		<p>Windowing</p>
+		<Waveform data={half_step_down} scale={0.3} />
+		<Waveform data={half_step_down_inverse} scale={0.01} />
+		<Waveform data={step_inverse_rotated} scale={0.01} />
+		<Waveform data={half_step_down_windowed} scale={0.01} />
+		<Waveform data={half_step_down_windowed_fft} scale={1 / 512} />
 		{#if audio_raw}
 			<Waveform
 				data={audio_raw}
@@ -416,6 +449,16 @@
 </div>
 
 <style>
+	:global(body) {
+		margin: 0;
+		padding: 0;
+	}
+
+	#rootdiv {
+		position: relative;
+		margin: 20px;
+	}
+
 	button {
 		background-color: white;
 		border: 0px;

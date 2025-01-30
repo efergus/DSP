@@ -64,9 +64,8 @@ export function polynomial_with_roots(roots: Complex[]) {
     let parts = roots.map((x) => [complex(1), complex_mul_scalar(x, -1)]);
     let res = parts.reduce((acc, val) => {
         const res = mul_complex_polynomials(acc, val);
-        // console.log(acc, val, res);
         return res;
-    });
+    }, [complex(1)]);
     return res;
 }
 

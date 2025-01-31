@@ -11,11 +11,13 @@
 	let {
 		children,
 		value = $bindable(0),
+		horizontal = false,
 		onchange,
 		oninput,
 		...rest
 	}: {
 		value: number;
+		horizontal?: boolean;
 		onchange?: Handler<NumberInputChangeEvent>;
 		oninput?: Handler<NumberInputChangeEvent>;
 	} & Omit<HTMLInputAttributes, 'value' | 'onchange' | 'oninput'> = $props();

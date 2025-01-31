@@ -40,8 +40,9 @@
 	let scale = $derived(Math.min(width, height) / pad / 2);
 	let selectThreshold = $derived(select_size / scale);
 
-	let hover: Root | null = $state(null);
+	let hovered: number = $state(-1);
 	let active: number = $state(-1);
+	let activeCount: number = $state(0);
 
 	const closestPoint = (pos: Complex, arr: Root[], threshold = selectThreshold / 2): number => {
 		let closest = -1;
@@ -66,22 +67,21 @@
 	};
 
 	const handleHover = (mousePos: Complex) => {
-		if (active >= 0) {
-			hover = roots[active];
-			return;
-		}
-		let selected = selectedRoot(mousePos);
-		hover = selected;
+		let selected = closestPoint(mousePos, roots);
+		hovered = selected;
 	};
 
 	const handleMouse = (state: ComplexMouseState) => {
 		let pos = state.complexPos;
 		let delta = state.complexDelta;
 		if (state.edgeDown) {
-			active = closestPoint(pos, roots);
+			let closest = closestPoint(pos, roots);
+			activeCount = active === closest ? activeCount + 1 : 0;
+			active = closest;
 		}
 		if (state.click) {
 			if (active < 0) {
+				active = roots.length;
 				roots = roots.concat([
 					{
 						state: 0,
@@ -89,14 +89,13 @@
 					}
 				]);
 			} else if (state.elapsed < 1) {
-				let ref = roots[active];
-				ref.state = (ref.state + 1) % 3;
+				if (activeCount > 0) {
+					let ref = roots[active];
+					ref.state = (ref.state + 1) % 3;
+				}
 			}
 		}
-		if (!state.down) {
-			active = -1;
-		}
-		if (active >= 0 && complex_norm(delta) > 0) {
+		if (state.down && active >= 0 && complex_norm(delta) > 0) {
 			let newVal = pos;
 			if (newVal.im < 0) {
 				newVal = complex_conjugate(newVal);
@@ -111,11 +110,21 @@
 		handleHover(pos);
 	};
 
+	const handleDelete = (index: number) => {
+		roots = roots.toSpliced(index, 1);
+		if (active >= roots.length) {
+			active = -1;
+		}
+	};
+
 	let zeros = $derived(addConjugates(roots.filter((x) => x.state === 0).map((x) => x.val)));
 	let poles = $derived(addConjugates(roots.filter((x) => x.state === 1).map((x) => x.val)));
 	let dead = $derived(addConjugates(roots.filter((x) => x.state === 2).map((x) => x.val)));
 
 	$effect(() => onchange?.(zeros, poles));
+
+	let visuallySelected = $derived(hovered >= 0 ? hovered : active);
+	$inspect({ hovered, active, visuallySelected });
 </script>
 
 <div>
@@ -125,11 +134,25 @@
 		{dead}
 		{width}
 		{height}
-		hover={hover?.val ?? null}
+		hover={visuallySelected >= 0 ? roots[visuallySelected]?.val : null}
 		onmouse={handleMouse}
 	/>
 	{#each roots as root, index}
-		<RootEditor polar={true} bind:value={roots[index]} />
+		<RootEditor
+			polar={true}
+			bind:value={roots[index]}
+			hovered={visuallySelected === index}
+			ondelete={() => handleDelete(index)}
+			onenter={() => {
+				hovered = index;
+			}}
+			onleave={() => {
+				hovered = -1;
+			}}
+			onfocus={() => {
+				active = index;
+			}}
+		/>
 	{/each}
 </div>
 

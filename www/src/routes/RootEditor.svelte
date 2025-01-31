@@ -9,18 +9,37 @@
 		rad_to_degrees,
 		type Complex
 	} from '$lib/audio/complex';
+	import { uniqueId } from '$lib/components/id';
 	import NumberInput from '$lib/components/NumberInput.svelte';
+	import Circle from '$lib/icons/Circle.svelte';
+	import Trash from '$lib/icons/Trash.svelte';
 	import type { Root } from './PoleZeroEditor.svelte';
+
+	let name = uniqueId('root-');
 
 	let {
 		value = $bindable({
 			state: 0,
 			val: complex(0, 0)
 		}),
-		polar = $bindable(false)
+		polar = $bindable(false),
+		hovered,
+		selected,
+		ondelete,
+		onenter,
+		onleave,
+		onfocus,
+		onblur
 	}: {
 		value: Root;
 		polar?: boolean;
+		hovered?: boolean;
+		selected?: boolean;
+		ondelete?: () => void;
+		onenter?: () => void;
+		onleave?: () => void;
+		onfocus?: () => void;
+		onblur?: () => void;
 	} = $props();
 
 	let radius = $state(0);
@@ -63,9 +82,49 @@
 		im = value.im;
 	};
 	$effect(() => updateInput(value.val));
+
+	let states = [
+		{
+			stateName: 'Zero',
+			circleFill: 'none',
+			circleStroke: 'black'
+		},
+		{
+			stateName: 'Pole',
+			circleFill: 'red',
+			circleStroke: 'red'
+		},
+		{
+			stateName: 'Off',
+			circleFill: 'blue',
+			circleStroke: 'blue'
+		}
+	];
 </script>
 
-<div class="outer">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
+<div
+	class="outer"
+	onmouseenter={() => onenter?.()}
+	onmouseleave={() => onleave?.()}
+	onfocusin={() => onfocus?.()}
+	onfocusout={() => onblur?.()}
+>
+	<div class="state between">
+		<div class={['state', hovered && 'gray']}>
+			{#each states as state, index}
+				<label class={[index === value.state && 'active']}>
+					<Circle fill={state.circleFill} stroke={state.circleStroke} size={18} />
+					<input type="radio" class="hidden" {name} onclick={() => (value.state = index)} />
+				</label>
+			{/each}
+			{states[value.state].stateName}
+		</div>
+		<button onclick={() => ondelete?.()}>
+			<Trash />
+		</button>
+	</div>
 	{#if polar}
 		<NumberInput
 			value={radius}
@@ -73,16 +132,19 @@
 				updateValuePolar(value, angle);
 			}}
 		>
-			r:
+			<i>r</i>:
 		</NumberInput>
+		<!-- <RangeInput></RangeInput> -->
 		<NumberInput
+			horizontal={true}
 			value={angle}
 			oninput={({ value }) => {
 				updateValuePolar(radius, value);
 			}}
 		>
-			θ:
+			<i>θ</i>:
 		</NumberInput>
+		<!-- <RangeInput></RangeInput> -->
 	{:else}
 		<NumberInput
 			value={re}
@@ -104,12 +166,38 @@
 </div>
 
 <style lang="less">
+	.gray {
+		background-color: gray;
+	}
+
+	label {
+		display: flex;
+		padding: 6px;
+		border-radius: 6px;
+		// height: fit-content;
+	}
+
+	label.active {
+		background-color: gray;
+	}
+
+	.state {
+		display: flex;
+		align-items: center;
+		flex-direction: row;
+		gap: 0.5em;
+	}
+
+	.state.between {
+		justify-content: space-between;
+	}
+
 	.outer {
-		display: grid;
-		grid-template-columns: 0.5fr 0.5fr;
+		display: flex;
+		flex-direction: column;
 		gap: 0.5em;
 		padding: 0.3em 0.5em 0.3em 0.5em;
 		border-radius: 0.2em;
-		background-color: gray;
+		background-color: white;
 	}
 </style>

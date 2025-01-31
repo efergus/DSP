@@ -1,5 +1,5 @@
 import { v4 } from "uuid";
 
-export function uniqueId() {
-    return v4();
+export function uniqueId(prefix = '') {
+    return prefix + v4();
 }

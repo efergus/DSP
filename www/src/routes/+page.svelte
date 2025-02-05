@@ -10,7 +10,7 @@
 	import { read } from '$app/server';
 	import Waveform from './Waveform.svelte';
 	import Spectrum from './Spectrum.svelte';
-	import { apply_hann_window, hann_windowed, pad, rotated } from '$lib/audio/window';
+	import { apply_hann_window, hann_windowed, pad_f32, rotated } from '$lib/audio/window';
 	import Spectrogram from './Spectrogram.svelte';
 	import { zero_crossing_median } from '$lib/audio/pitch';
 	import {
@@ -25,8 +25,8 @@
 	} from '$lib/audio/filter';
 	import PoleZeroPlot from './PoleZeroPlot.svelte';
 	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
-	import { addConjugates, Iir } from '$lib/audio/iir';
-	import PoleZeroEditor from './PoleZeroEditor.svelte';
+	import { addConjugates, butterworth, Iir } from '$lib/audio/iir';
+	import PoleZeroEditor, { type Root } from './PoleZeroEditor.svelte';
 
 	let width = 400;
 	let height = 200;
@@ -257,28 +257,40 @@
 	let bw = $derived(Number(range_value2) / 10 || 1 / 32);
 	let whatever = $derived(Number(range_value) * Math.PI || 0.0);
 	let whatever2 = $derived(Number(range_value2) || 0.0);
-	let roots = $state(
-		[complex_polar(0.4, 1)]
+	const butter_filter = $derived(butterworth(whatever, Math.floor(whatever2 * 5) + 1));
+	const butter_digital = $derived(butter_filter.to_digital_bilinear(0.2));
+	let roots: Root[] = $state([]);
+	$effect(() => {
+		roots = butter_digital.zeros
 			.map((val) => ({
 				state: 0,
 				val
 			}))
 			.concat(
-				[complex_polar(0.4, 0.8)].map((val) => ({
+				butter_digital.poles.map((val) => ({
 					state: 1,
 					val
 				}))
 			)
-	);
+			.filter((root) => root.val.im >= 0);
+	});
 	let zeros = $state([complex(0, 0)]);
 	let poles = $state([complex(0, 0)]);
 	// let { zeros, poles } = example_filter_values();
-	let filter = $derived(new Iir(zeros, poles));
+	let filter = $derived(butter_digital);
 	let response = $derived.by(() => {
 		let points = 200;
 		let arr = new Float32Array(points);
 		for (let i = 0; i < points; i++) {
 			arr[i] = filter.response_norm(i / points / 2);
+		}
+		return arr;
+	});
+	let continuous_response = $derived.by(() => {
+		let points = 200;
+		let arr = new Float32Array(points);
+		for (let i = 0; i < points; i++) {
+			arr[i] = butter_filter.freq_response((i / points) * Math.PI);
 		}
 		return arr;
 	});
@@ -290,15 +302,13 @@
 		return arr;
 	});
 	let response_magnitude = $derived(response.reduce((a, b) => Math.max(a, b)));
+	$inspect({ response_magnitude });
 
 	let filter_impulse = $derived.by(() => {
-		let filter = iir_filter(zeros, poles);
 		let data = new Float32Array(256);
-		let output = new Float32Array(256);
 		data[0] = 1.0;
-		for (let i = 0; i < data.length; i++) {
-			output[i] = apply_iir(filter, data.slice(0, i + 1), output.slice(0, i));
-		}
+		let output = new Float32Array(256);
+		// let output = butter_digital.apply(data);
 		return output;
 	});
 
@@ -318,7 +328,7 @@
 	// console.log(half_step_down_inverse);
 	let half_step_down_windowed = $derived(hann_windowed(step_inverse_rotated));
 	let half_step_down_windowed_fft = $derived(
-		fft_context.fft_norm(pad(half_step_down_windowed, 256))
+		fft_context.fft_norm(pad_f32(half_step_down_windowed, 256))
 	);
 
 	let notch_freq = $derived.by(() => {
@@ -353,22 +363,24 @@
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
 		<Waveform data={filter_impulse} limit={10000} scale={0.5} />
-		<Spectrum data={filter_impulse} size={256} scale={0.2} />
+		<Spectrum data={filter_impulse} size={256} scale={1} />
 		<PoleZeroEditor
 			bind:roots
+			conjugate
 			onchange={(z, p) => {
 				zeros = z;
 				poles = p;
 			}}
 		/>
 		<Waveform data={response} scale={0.9 / response_magnitude} />
+		<Waveform data={continuous_response} scale={0.9} />
 		<Waveform data={response_phase} scale={0.3} />
-		<p>Windowing</p>
+		<!-- <p>Windowing</p>
 		<Waveform data={half_step_down} scale={0.3} />
 		<Waveform data={half_step_down_inverse} scale={0.01} />
 		<Waveform data={step_inverse_rotated} scale={0.01} />
 		<Waveform data={half_step_down_windowed} scale={0.01} />
-		<Waveform data={half_step_down_windowed_fft} scale={1 / 512} />
+		<Waveform data={half_step_down_windowed_fft} scale={1 / 512} /> -->
 		{#if audio_raw}
 			<Waveform
 				data={audio_raw}

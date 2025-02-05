@@ -1,7 +1,7 @@
-import { complex, complex_add, complex_mul, complex_mul_scalar, complex_norm2, complex_polar, type Complex } from "./complex";
+import { complex, complex_add, complex_div, complex_mul, complex_mul_scalar, complex_norm2, complex_polar, complex_sub, type Complex } from "./complex";
 import { realCoefficients } from "./iir";
 
-type NumArr = number[] | Float32Array | Float64Array;
+export type NumArr = number[] | Float32Array | Float64Array;
 
 type IIRFilter = {
     forward: number[];
@@ -10,11 +10,11 @@ type IIRFilter = {
 }
 
 type Polynomial<T = number> = T[];
-export function filter_from_coefficients(forward: number[], back: number[]) {
-    let scale = (x: number) => x / back[0];
+export function filter_from_coefficients(forward: number[], back: number[], gain: number) {
+    let scale = (gain: number) => (x: number) => x / gain;
     return {
-        forward: forward.map(scale),
-        back: back.slice(1).map(scale),
+        forward: forward.map(scale(back[0] / gain)),
+        back: back.map(scale(back[0])),
         gain: 1
     }
 }
@@ -144,10 +144,10 @@ export function example_filter_values() {
     return { zeros, poles };
 }
 
-export function iir_filter(zeros: Complex[], poles: Complex[]) {
+export function iir_filter(zeros: Complex[], poles: Complex[], gain = 1) {
     let forward = realCoefficients(zeros);
     let back = realCoefficients(poles);
-    return filter_from_coefficients(forward, back);
+    return filter_from_coefficients(forward, back, gain);
 }
 
 export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): number {
@@ -155,8 +155,24 @@ export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): num
     for (let i = 0; i < Math.min(filter.forward.length, input.length); i++) {
         y += input[input.length - 1 - i] * filter.forward[i] * filter.gain;
     }
-    for (let i = 0; i < Math.min(filter.back.length, output.length); i++) {
-        y -= output[output.length - 1 - i] * filter.back[i];
+    for (let i = 0; i < Math.min(filter.back.length - 1, output.length); i++) {
+        y -= output[output.length - 1 - i] * filter.back[i + 1];
     }
     return y;
+}
+
+export function s2z_bilinear(s: Complex, T = 1, freq = 0) {
+    let coeffecient = freq > 0 ? Math.tan(freq * T / 2) / freq : T / 2;
+    return complex_div(
+        complex_add(complex(1), complex_mul_scalar(s, coeffecient)),
+        complex_sub(complex(1), complex_mul_scalar(s, coeffecient))
+    )
+}
+
+export function z2s_bilinear(z: Complex, T = 1, freq = 0) {
+    let coeffecient = freq > 0 ? freq / Math.tan(freq * T / 2) : 2 / T;
+    return complex_mul_scalar(complex_div(
+        complex_sub(z, complex(1)),
+        complex_add(z, complex(1))
+    ), coeffecient)
 }

@@ -1,17 +1,12 @@
 <script lang="ts">
 	import {
-		complex,
-		complex_add,
 		complex_conjugate,
 		complex_dist,
 		complex_div_scalar,
 		complex_norm,
-		complex_norm2,
-		complex_sub,
 		type Complex
 	} from '$lib/audio/complex';
-	import { addConjugates } from '$lib/audio/iir';
-	import type { MouseState } from '$lib/input/state';
+	import { addConjugates, removeConjugates } from '$lib/audio/iir';
 	import PoleZeroPlot, { type ComplexMouseState } from './PoleZeroPlot.svelte';
 	import RootEditor from './RootEditor.svelte';
 
@@ -26,6 +21,7 @@
 		height = 300,
 		padding = 0.2,
 		select_size = 40,
+		conjugate = false,
 		onchange
 	}: {
 		roots: Root[];
@@ -33,6 +29,7 @@
 		height?: number;
 		padding?: number;
 		select_size?: number;
+		conjugate?: boolean;
 		onchange?: (zeros: Complex[], poles: Complex[]) => void;
 	} = $props();
 
@@ -91,20 +88,26 @@
 			} else if (state.elapsed < 1) {
 				if (activeCount > 0) {
 					let ref = roots[active];
-					ref.state = (ref.state + 1) % 3;
+					roots[active] = {
+						...ref,
+						state: (ref.state + 1) % 3
+					};
 				}
 			}
 		}
 		if (state.down && active >= 0 && complex_norm(delta) > 0) {
 			let newVal = pos;
-			if (newVal.im < 0) {
+			if (conjugate && newVal.im < 0) {
 				newVal = complex_conjugate(newVal);
 			}
 			let norm = complex_norm(newVal);
 			if (norm > 1.0) {
 				newVal = complex_div_scalar(newVal, norm);
 			}
-			roots[active].val = newVal;
+			roots[active] = {
+				...roots[active],
+				val: newVal
+			};
 			roots = roots;
 		}
 		handleHover(pos);
@@ -117,9 +120,10 @@
 		}
 	};
 
-	let zeros = $derived(addConjugates(roots.filter((x) => x.state === 0).map((x) => x.val)));
-	let poles = $derived(addConjugates(roots.filter((x) => x.state === 1).map((x) => x.val)));
-	let dead = $derived(addConjugates(roots.filter((x) => x.state === 2).map((x) => x.val)));
+	const addConjugateRoots = conjugate ? addConjugates : (arr: Complex[]) => arr;
+	let zeros = $derived(addConjugateRoots(roots.filter((x) => x.state === 0).map((x) => x.val)));
+	let poles = $derived(addConjugateRoots(roots.filter((x) => x.state === 1).map((x) => x.val)));
+	let dead = $derived(addConjugateRoots(roots.filter((x) => x.state === 2).map((x) => x.val)));
 
 	$effect(() => onchange?.(zeros, poles));
 

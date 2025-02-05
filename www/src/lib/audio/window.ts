@@ -18,7 +18,7 @@ export function hann_windowed(data: Float32Array, pad: number = 0): Float32Array
     return data_copy;
 }
 
-export function pad(input: Float32Array, length: number): Float32Array {
+export function pad_f32(input: Float32Array, length: number): Float32Array {
     const output = new Float32Array(Math.max(input.length, length));
     output.set(input);
     return output;

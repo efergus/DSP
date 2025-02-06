@@ -11,10 +11,10 @@ type IIRFilter = {
 
 type Polynomial<T = number> = T[];
 export function filter_from_coefficients(forward: number[], back: number[], gain: number) {
-    let scale = (gain: number) => (x: number) => x / gain;
+    let scale = (gain: number) => (x: number) => x * gain;
     return {
-        forward: forward.map(scale(back[0] / gain)),
-        back: back.map(scale(back[0])),
+        forward: forward.map(scale(gain / back[0])),
+        back: back.map(scale(1 / back[0])),
         gain: 1
     }
 }
@@ -155,8 +155,8 @@ export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): num
     for (let i = 0; i < Math.min(filter.forward.length, input.length); i++) {
         y += input[input.length - 1 - i] * filter.forward[i] * filter.gain;
     }
-    for (let i = 0; i < Math.min(filter.back.length - 1, output.length); i++) {
-        y -= output[output.length - 1 - i] * filter.back[i + 1];
+    for (let i = 1; i < Math.min(filter.back.length, output.length); i++) {
+        y -= output[output.length - i] * filter.back[i];
     }
     return y;
 }

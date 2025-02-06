@@ -25,7 +25,7 @@
 	} from '$lib/audio/filter';
 	import PoleZeroPlot from './PoleZeroPlot.svelte';
 	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
-	import { addConjugates, butterworth, Iir } from '$lib/audio/iir';
+	import { addConjugates, butterworth, Iir, single_pole_notch } from '$lib/audio/iir';
 	import PoleZeroEditor, { type Root } from './PoleZeroEditor.svelte';
 
 	let width = 400;
@@ -258,7 +258,8 @@
 	let whatever = $derived(Number(range_value) * Math.PI || 0.0);
 	let whatever2 = $derived(Number(range_value2) || 0.0);
 	const butter_filter = $derived(butterworth(whatever, Math.floor(whatever2 * 5) + 1));
-	const butter_digital = $derived(butter_filter.to_digital_bilinear(0.2));
+	// const butter_digital = $derived(butter_filter.to_digital_bilinear(0.2));
+	const butter_digital = $derived(single_pole_notch(whatever, whatever2));
 	let roots: Root[] = $state([]);
 	$effect(() => {
 		roots = butter_digital.zeros
@@ -304,11 +305,22 @@
 	let response_magnitude = $derived(response.reduce((a, b) => Math.max(a, b)));
 	$inspect({ response_magnitude });
 
-	let filter_impulse = $derived.by(() => {
+	let filter_impulse1 = $derived.by(() => {
+		let filter = iir_filter(zeros, poles, butter_digital.gain);
+		console.log(filter);
 		let data = new Float32Array(256);
 		data[0] = 1.0;
 		let output = new Float32Array(256);
-		// let output = butter_digital.apply(data);
+		for (let i = 0; i < data.length; i++) {
+			output[i] = apply_iir(filter, data.slice(0, i + 1), output.slice(0, i));
+		}
+		return output;
+	});
+	let filter_impulse2 = $derived.by(() => {
+		let data = new Float32Array(256);
+		data[0] = 1.0;
+		let output = butter_digital.apply(data);
+		// console.log(output);
 		return output;
 	});
 
@@ -332,7 +344,7 @@
 	);
 
 	let notch_freq = $derived.by(() => {
-		let result = fft_context.fft_norm(filter_impulse);
+		let result = fft_context.fft_norm(filter_impulse1);
 		return result;
 	});
 
@@ -362,8 +374,10 @@
 	>
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
-		<Waveform data={filter_impulse} limit={10000} scale={0.5} />
-		<Spectrum data={filter_impulse} size={256} scale={1} />
+		<Waveform data={filter_impulse1} limit={10000} scale={0.5} />
+		<Waveform data={filter_impulse2} limit={10000} scale={0.5} />
+		<Spectrum data={filter_impulse1} size={256} scale={0.2} />
+		<Spectrum data={filter_impulse2} size={256} scale={0.2} />
 		<PoleZeroEditor
 			bind:roots
 			conjugate

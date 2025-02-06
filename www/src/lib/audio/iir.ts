@@ -26,16 +26,16 @@ export function realCoefficients(roots: Complex[]): number[] {
 }
 
 export class Iir {
-    declare _forward: number[];
-    declare _back: number[];
+    declare _forward: Float32Array;
+    declare _back: Float32Array;
     declare _state: number[];
     declare zeros: Complex[];
     declare poles: Complex[];
     declare gain: number;
 
     constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1) {
-        this._forward = [1];
-        this._back = [1];
+        this._forward = new Float32Array([1]);
+        this._back = new Float32Array([1]);
         this.zeros = zeros;
         this.poles = poles;
         this.gain = gain;
@@ -54,8 +54,13 @@ export class Iir {
     }
 
     _calculateCoefficients() {
-        this._forward = coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain);
-        this._back = coefficients(this.poles).map(complex_to_real);
+        const N = this.order() + 1;
+        this._forward = new Float32Array(N);
+        this._back = new Float32Array(N);
+        // this._forward = coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain);
+        // this._back = coefficients(this.poles).map(complex_to_real);
+        this._back.set(coefficients(this.poles).map(complex_to_real));
+        this._forward.set(coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain / this._back[0]));
     }
 
     // TODO rename these response functions
@@ -102,20 +107,25 @@ export class IirDigital extends Iir {
         super(zeros, poles, gain);
     }
 
-    apply(input: NumArr, past?: NumArr): Float32Array {
+    apply(input: NumArr, pastInput?: NumArr, pastOutput?: NumArr): Float32Array {
         const N = this.order();
-        past = past ?? new Float32Array(0);
+        pastOutput = pastOutput ?? new Float32Array(0);
+        pastInput = pastInput ?? new Float32Array(0);
         const output = new Float32Array(input.length);
         for (let idx = 0; idx < input.length; idx++) {
-            console.log("applying", idx)
             let y = 0;
-            for (let delay = 0; delay < idx && delay < N; idx++) {
-                y += input[idx - delay] * this._forward[idx];
-            }
-            y *= this.gain;
-            for (let delay = 1; delay < N && delay <= past.length + idx; delay++) {
+            for (let delay = 0; delay < N && delay <= pastInput.length + idx; delay++) {
                 if (delay > idx) {
-                    y -= past[past.length + idx - delay] * this._back[delay]
+                    y += pastInput[pastInput.length + idx - delay] * this._forward[delay];
+                }
+                else {
+                    y += input[idx - delay] * this._forward[delay];
+                }
+            }
+            // y *= this.gain;
+            for (let delay = 1; delay < N && delay <= pastOutput.length + idx; delay++) {
+                if (delay > idx) {
+                    y -= pastOutput[pastOutput.length + idx - delay] * this._back[delay]
                 }
                 else {
                     y -= output[idx - delay] * this._back[delay];
@@ -142,10 +152,10 @@ export class IirContinuous extends Iir {
         let poles = transformed_poles.concat(new Array(N - this.poles.length).fill(complex(-1)));
 
         const filter = new IirDigital(zeros, poles, this.gain);
-        const target_response = filter.response_norm(freq);
-        const our_response = this.freq_response(freq);
-        filter.gain = our_response / target_response;
-        filter._calculateCoefficients();
+        // const target_response = filter.response_norm(freq);
+        // const our_response = this.freq_response(freq);
+        // filter.gain = our_response / target_response;
+        // filter._calculateCoefficients();
         // console.log("gains", dc_response, filter.gain, this.gain)
 
         return filter;
@@ -177,4 +187,8 @@ export function butterworth(freq: number, order = 2) {
         // }
     }
     return new IirContinuous([], poles, gain);
+}
+
+export function single_pole_notch(freq: number, width: number) {
+    return new IirDigital(addConjugates([complex_polar(freq, 1)]), addConjugates([complex_polar(freq, 1 - width)]))
 }

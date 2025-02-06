@@ -43,6 +43,7 @@
 				slice[i] *= hann_index(i, size);
 			}
 		}
+		// return fft_context.fft_norm(slice).map((val) => Math.log10(val) / 10);
 		return fft_context.fft_norm(slice);
 	});
 	$effect(() => onfft(fft_data));
@@ -58,8 +59,8 @@
 				draw_waveform(context, fft_data, {
 					offset: base,
 					limit: span,
-					scale: scale * height,
-					y: 0
+					scale: scale * height
+					// y: 0
 				});
 			}
 			requestAnimationFrame(draw);

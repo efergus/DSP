@@ -155,7 +155,7 @@ export function apply_iir(filter: IIRFilter, input: NumArr, output: NumArr): num
     for (let i = 0; i < Math.min(filter.forward.length, input.length); i++) {
         y += input[input.length - 1 - i] * filter.forward[i] * filter.gain;
     }
-    for (let i = 1; i < Math.min(filter.back.length, output.length); i++) {
+    for (let i = 1; i < filter.back.length && i <= output.length; i++) {
         y -= output[output.length - i] * filter.back[i];
     }
     return y;

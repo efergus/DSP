@@ -1,4 +1,3 @@
-import { json } from "@sveltejs/kit";
 
 export type Complex = {
     re: number;

@@ -25,8 +25,16 @@
 	} from '$lib/audio/filter';
 	import PoleZeroPlot from './PoleZeroPlot.svelte';
 	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
-	import { addConjugates, butterworth, Iir, single_pole_notch } from '$lib/audio/iir';
+	import {
+		addConjugates,
+		butterworth,
+		Iir,
+		IirDigital,
+		single_pole_bandpass,
+		single_pole_bandstop
+	} from '$lib/audio/iir';
 	import PoleZeroEditor, { type Root } from './PoleZeroEditor.svelte';
+	import NoiseSpectrum from './NoiseSpectrum.svelte';
 
 	let width = 400;
 	let height = 200;
@@ -54,6 +62,7 @@
 		node: null,
 		gain: null
 	};
+	let port: MessagePort | null = $state(null);
 	let fft_context = context();
 	let fft_window = new Float32Array(1024 * 4);
 	// size of an audio chunk (not configurable)
@@ -108,7 +117,10 @@
 
 		await audio_context.audioWorklet.addModule(processor.url);
 
-		let node = new AudioWorkletNode(audio_context, processor.name, {});
+		let node = new AudioWorkletNode(audio_context, processor.name, {
+			processorOptions: { test: 'test' }
+		});
+		port = node.port;
 		source.connect(node);
 		node.connect(gain);
 		gain.connect(audio_context.destination);
@@ -119,9 +131,11 @@
 
 		node.port.onmessage = (e) => {
 			if (state_old.recording && !state_old.paused) {
-				audio_chunks.push(e.data[0]);
+				audio_chunks.push(e.data);
+				// console.log(e.data[0]);
 			}
 		};
+		// node.port.postMessage({ filter: butter_digital });
 		gain.gain.linearRampToValueAtTime(0.9, audio_context.currentTime + 0.5);
 	};
 
@@ -255,11 +269,15 @@
 	let range_value2 = $state('0.5');
 	let freq = $derived(Number(range_value) || 440 / 44100);
 	let bw = $derived(Number(range_value2) / 10 || 1 / 32);
-	let whatever = $derived(Number(range_value) * Math.PI || 0.0);
+	let whatever = $derived(Number(range_value) || 0.0);
 	let whatever2 = $derived(Number(range_value2) || 0.0);
 	const butter_filter = $derived(butterworth(whatever, Math.floor(whatever2 * 5) + 1));
 	// const butter_digital = $derived(butter_filter.to_digital_bilinear(0.2));
-	const butter_digital = $derived(single_pole_notch(whatever, whatever2));
+	const butter_digital = $derived(single_pole_bandpass(whatever, whatever2));
+	$effect(() => {
+		port?.postMessage({ filter: butter_digital });
+	});
+	// const butter_digital = $derived(single_pole_notch(whatever, whatever2));
 	let roots: Root[] = $state([]);
 	$effect(() => {
 		roots = butter_digital.zeros
@@ -278,7 +296,7 @@
 	let zeros = $state([complex(0, 0)]);
 	let poles = $state([complex(0, 0)]);
 	// let { zeros, poles } = example_filter_values();
-	let filter = $derived(butter_digital);
+	let filter = $derived(new IirDigital(zeros, poles, butter_digital.gain));
 	let response = $derived.by(() => {
 		let points = 200;
 		let arr = new Float32Array(points);
@@ -307,7 +325,6 @@
 
 	let filter_impulse1 = $derived.by(() => {
 		let filter = iir_filter(zeros, poles, butter_digital.gain);
-		console.log(filter);
 		let data = new Float32Array(256);
 		data[0] = 1.0;
 		let output = new Float32Array(256);
@@ -374,10 +391,13 @@
 	>
 		<canvas bind:this={audio_canvas} {width} {height}></canvas>
 		<canvas bind:this={spectrum_canvas} {width} {height}></canvas>
-		<Waveform data={filter_impulse1} limit={10000} scale={0.5} />
-		<Waveform data={filter_impulse2} limit={10000} scale={0.5} />
-		<Spectrum data={filter_impulse1} size={256} scale={0.2} />
-		<Spectrum data={filter_impulse2} size={256} scale={0.2} />
+		<div>
+			<NoiseSpectrum {filter} />
+		</div>
+		<Waveform data={filter_impulse1} limit={10000} scale={1} />
+		<Waveform data={filter_impulse2} limit={10000} scale={1} />
+		<Spectrum data={filter_impulse1} size={256} scale={0.9} />
+		<Spectrum data={filter_impulse2} size={256} scale={0.9} />
 		<PoleZeroEditor
 			bind:roots
 			conjugate

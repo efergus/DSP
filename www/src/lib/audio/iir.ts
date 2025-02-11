@@ -108,7 +108,7 @@ export class IirDigital extends Iir {
     }
 
     apply(input: NumArr, pastInput?: NumArr, pastOutput?: NumArr): Float32Array {
-        const N = this.order();
+        const N = this.order() + 1;
         pastOutput = pastOutput ?? new Float32Array(0);
         pastInput = pastInput ?? new Float32Array(0);
         const output = new Float32Array(input.length);
@@ -151,11 +151,11 @@ export class IirContinuous extends Iir {
         let zeros = transformed_zeros.concat(new Array(N - this.zeros.length).fill(complex(-1)));
         let poles = transformed_poles.concat(new Array(N - this.poles.length).fill(complex(-1)));
 
-        const filter = new IirDigital(zeros, poles, this.gain);
-        // const target_response = filter.response_norm(freq);
-        // const our_response = this.freq_response(freq);
-        // filter.gain = our_response / target_response;
-        // filter._calculateCoefficients();
+        const filter = new IirDigital(zeros, poles);
+        const target_response = filter.response_norm(freq);
+        const our_response = this.freq_response(freq);
+        filter.gain = our_response / target_response;
+        filter._calculateCoefficients();
         // console.log("gains", dc_response, filter.gain, this.gain)
 
         return filter;
@@ -189,6 +189,10 @@ export function butterworth(freq: number, order = 2) {
     return new IirContinuous([], poles, gain);
 }
 
-export function single_pole_notch(freq: number, width: number) {
+export function single_pole_bandstop(freq: number, width: number) {
     return new IirDigital(addConjugates([complex_polar(freq, 1)]), addConjugates([complex_polar(freq, 1 - width)]))
+}
+
+export function single_pole_bandpass(freq: number, width: number) {
+    return new IirDigital(addConjugates([complex_polar(freq, 0.95 - width)]), addConjugates([complex_polar(freq, 0.95)]))
 }

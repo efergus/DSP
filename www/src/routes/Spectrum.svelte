@@ -59,8 +59,8 @@
 				draw_waveform(context, fft_data, {
 					offset: base,
 					limit: span,
-					scale: scale * height
-					// y: 0
+					scale: scale * height,
+					y: 0
 				});
 			}
 			requestAnimationFrame(draw);

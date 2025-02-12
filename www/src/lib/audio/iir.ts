@@ -122,7 +122,7 @@ export class IirDigital extends Iir {
                     y += input[idx - delay] * this._forward[delay];
                 }
             }
-            // y *= this.gain;
+            y *= this.gain;
             for (let delay = 1; delay < N && delay <= pastOutput.length + idx; delay++) {
                 if (delay > idx) {
                     y -= pastOutput[pastOutput.length + idx - delay] * this._back[delay]

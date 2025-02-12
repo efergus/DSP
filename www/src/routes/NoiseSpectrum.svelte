@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { IirDigital } from '$lib/audio/iir';
-	import { whiteNoise } from '$lib/audio/signals';
+	import { phaseNoise, whiteNoise } from '$lib/audio/signals';
 	import Spectrum from './Spectrum.svelte';
 	import Waveform from './Waveform.svelte';
 
@@ -10,12 +10,14 @@
 		filter: IirDigital;
 	} = $props();
 
-	const whiteNoiseSample = whiteNoise(1024);
-	const filteredSample = $derived(filter.apply(whiteNoiseSample));
+	const size = 128;
+	// const noiseSample = whiteNoise(size);
+	const noiseSample = phaseNoise(size);
+	const filteredSample = $derived(filter.apply(noiseSample));
 	$inspect({ filteredSample });
 </script>
 
-<Waveform data={whiteNoiseSample} scale={0.5} />
-<Waveform data={filteredSample} scale={0.5} />
-<Spectrum data={whiteNoiseSample} scale={0.01} />
-<Spectrum data={filteredSample} scale={0.01} />
+<Waveform data={noiseSample} />
+<Waveform data={filteredSample} />
+<Spectrum data={noiseSample} {size} scale={0.01} />
+<Spectrum data={filteredSample} {size} scale={0.01} />

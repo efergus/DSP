@@ -53,7 +53,7 @@ impl FftContext {
         let mut peak_idx: usize = 0;
 
         for (i, val) in result.iter().enumerate() {
-            if (*val > peak) {
+            if *val > peak {
                 peak = *val;
                 peak_idx = i;
             }
@@ -63,7 +63,7 @@ impl FftContext {
     }
 
     pub fn fft_inverse(&mut self, spectrum: std::vec::Vec<f32>) -> std::vec::Vec<f32> {
-        let plan = self.planner.plan_fft_inverse((spectrum.len() - 1) * 2);
+        let plan = self.planner.plan_fft_inverse(spectrum.len() - 2);
         let mut input = plan.make_input_vec();
         let mut output = plan.make_output_vec();
         for idx in 0..spectrum.len() / 2 {

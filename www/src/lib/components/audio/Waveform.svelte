@@ -43,7 +43,7 @@
 		const sampleSpan = sampleEnd - sampleStart;
 		const verticalSpan = span.y.max - span.y.min;
 
-		const sampleStartIndex = Math.max(Math.floor(sampleStart), 0);
+		let sampleStartIndex = Math.max(Math.floor(sampleStart), 0);
 		const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
 
 		const h2 = Math.ceil(height / 2);
@@ -51,24 +51,37 @@
 		if (sampleSpan > width * 2) {
 			context.lineWidth = 1;
 
-			const windowStride = Math.ceil(sampleSpan / width);
-			for (let window = 0; window < width; window++) {
-				const base = sampleStartIndex + window * windowStride;
+			const stride = Math.ceil(sampleSpan / width);
+			sampleStartIndex = sampleStartIndex - (sampleStartIndex % stride);
+			const samples = new Float32Array(stride);
+			for (let chunk = 0; chunk < width; chunk++) {
+				const base = sampleStartIndex + chunk * stride;
 				if (base >= sample.length) {
 					break;
 				}
-				const val = sample.getFrame(base);
-				let min = val;
-				let max = val;
-				for (let index = 0; index < windowStride && base + index < sampleEndIndex; index++) {
-					const val = sample.getFrame(base + index);
-					min = Math.min(min, val);
-					max = Math.max(max, val);
+				let index = 0;
+				for (; index < stride && base + index < sampleEndIndex; index++) {
+					samples[index] = sample.getFrame(base + index);
 				}
+				samples.fill(0, index);
 
-				const rectY = h2 + Math.ceil((min / verticalSpan) * height);
-				const rectH = Math.ceil(((max - min) / verticalSpan) * height);
-				context.fillRect(window, rectY, 1, rectH);
+				samples.sort();
+				const min = samples[0];
+				const max = samples[stride - 2];
+				// calculate quartiles
+				const quart = stride / 4;
+				const q1 = (samples[Math.floor(quart)] + samples[Math.ceil(quart)]) / 2;
+				const q3 = (samples[Math.floor(quart * 3)] + samples[Math.ceil(quart * 3)]) / 2;
+
+				let rectY = h2 + Math.ceil((min / verticalSpan) * height);
+				let rectH = Math.ceil(((max - min) / verticalSpan) * height);
+				context.fillStyle = 'rgb(120 120 255)';
+				context.fillRect(chunk, rectY, 1, rectH);
+
+				rectY = h2 + Math.ceil((q1 / verticalSpan) * height);
+				rectH = Math.ceil(((q3 - q1) / verticalSpan) * height);
+				context.fillStyle = 'rgb(0 120 0)';
+				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {
 			for (let index = sampleStartIndex; index < sampleEndIndex; index++) {

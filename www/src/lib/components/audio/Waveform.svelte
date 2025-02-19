@@ -51,36 +51,24 @@
 		if (sampleSpan > width * 2) {
 			context.lineWidth = 1;
 
-			const stride = Math.ceil(sampleSpan / width);
-			sampleStartIndex = sampleStartIndex - (sampleStartIndex % stride);
-			const samples = new Float32Array(stride);
+			const chunkStride = Math.ceil(sampleSpan / width);
+			sampleStartIndex = sampleStartIndex - (sampleStartIndex % chunkStride);
 			for (let chunk = 0; chunk < width; chunk++) {
-				const base = sampleStartIndex + chunk * stride;
+				const base = sampleStartIndex + chunk * chunkStride;
 				if (base >= sample.length) {
 					break;
 				}
-				let index = 0;
-				for (; index < stride && base + index < sampleEndIndex; index++) {
-					samples[index] = sample.getFrame(base + index);
+				const val = sample.getFrame(base);
+				let min = val;
+				let max = val;
+				for (let index = 0; index < chunkStride && base + index < sampleEndIndex; index++) {
+					const val = sample.getFrame(base + index);
+					min = Math.min(min, val);
+					max = Math.max(max, val);
 				}
-				samples.fill(0, index);
 
-				samples.sort();
-				const min = samples[0];
-				const max = samples[stride - 2];
-				// calculate quartiles
-				const quart = stride / 4;
-				const q1 = (samples[Math.floor(quart)] + samples[Math.ceil(quart)]) / 2;
-				const q3 = (samples[Math.floor(quart * 3)] + samples[Math.ceil(quart * 3)]) / 2;
-
-				let rectY = h2 + Math.ceil((min / verticalSpan) * height);
-				let rectH = Math.ceil(((max - min) / verticalSpan) * height);
-				context.fillStyle = 'rgb(120 120 255)';
-				context.fillRect(chunk, rectY, 1, rectH);
-
-				rectY = h2 + Math.ceil((q1 / verticalSpan) * height);
-				rectH = Math.ceil(((q3 - q1) / verticalSpan) * height);
-				context.fillStyle = 'rgb(0 120 0)';
+				const rectY = h2 - Math.ceil((max / verticalSpan) * height);
+				const rectH = Math.ceil(((max - min) / verticalSpan) * height);
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {

@@ -1,3 +1,4 @@
+import type { AudioSample } from "./sample";
 
 export type DrawWaveformOptions = {
     offset?: number;
@@ -89,3 +90,33 @@ export function draw_waveform(context: CanvasRenderingContext2D, values: Float32
         context.stroke();
     }
 }
+
+// export function draw_waveform2(context: CanvasRenderingContext2D, values: AudioSample, options: DrawWaveformOptions = {}) {
+//     const canvas = context.canvas;
+//     if (!values.length) {
+//         return;
+//     }
+//     const { offset = 0, scale = canvas.height / 2, x = 0, width = canvas.width } = options;
+//     const y = canvas.height - (options.y ?? (canvas.height / 2));
+//     const length = Math.min(options.limit ?? Infinity, values.length - offset);
+
+//     if (length * 2 > canvas.width) {
+//         draw_waveform_envelope(context, values, {
+//             offset, limit: length, scale, x, y, width
+//         })
+//     }
+//     else {
+//         const dx = width / length;
+
+//         context.lineWidth = 2;
+//         context.strokeStyle = 'rgb(0 0 0)';
+
+//         context.beginPath();
+//         context.moveTo(x, y);
+//         for (let i = 0; i < length; i++) {
+//             const val = values[i + offset];
+//             context.lineTo(x + dx * i, y - val * scale)
+//         }
+//         context.stroke();
+//     }
+// }

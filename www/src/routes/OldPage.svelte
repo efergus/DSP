@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { processor } from '$lib/audio/processor';
+	import { noiseProcessor } from '$lib/audio/processor';
 	import Circle from '$lib/icons/Circle.svelte';
 	import PauseCircle from '$lib/icons/PauseCircle.svelte';
 	import StopCircle from '$lib/icons/StopCircle.svelte';
@@ -8,7 +8,7 @@
 	import { combine, draw_waveform } from '$lib/audio/draw';
 	import { scale } from 'svelte/transition';
 	import { read } from '$app/server';
-	import Waveform from './Waveform.svelte';
+	import Waveform from './OldWaveform.svelte';
 	import Spectrum from './Spectrum.svelte';
 	import { apply_hann_window, hann_windowed, pad_f32, rotated } from '$lib/audio/window';
 	import Spectrogram from './Spectrogram.svelte';
@@ -115,9 +115,9 @@
 		analyser.fftSize = BUF_SIZE;
 		source.connect(analyser);
 
-		await audio_context.audioWorklet.addModule(processor.url);
+		await audio_context.audioWorklet.addModule(noiseProcessor.url);
 
-		let node = new AudioWorkletNode(audio_context, processor.name, {
+		let node = new AudioWorkletNode(audio_context, noiseProcessor.name, {
 			processorOptions: { test: 'test' }
 		});
 		port = node.port;
@@ -449,7 +449,7 @@
 						}
 					}
 					let f = (n: number) => (n * 22050) / (data.length - 1);
-					console.log('peak', data.length, peak_idx, f(peak_idx), f(peak_idx - 1), f(peak_idx + 1));
+					// console.log('peak', data.length, peak_idx, f(peak_idx), f(peak_idx - 1), f(peak_idx + 1));
 				}}
 			/>
 			<Waveform data={fft_peaks} limit={10000} scale={6} cursor={offset / 128} />

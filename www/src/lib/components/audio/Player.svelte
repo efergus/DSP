@@ -1,15 +1,18 @@
 <script lang="ts">
 	import type { AudioSample } from '$lib/audio/sample';
-	import { span2d } from '$lib/geometry/geometry';
+	import { type Span2D } from '$lib/geometry/geometry';
+	import type { MouseStateHandler } from '$lib/input/state';
 	import Waveform from './Waveform.svelte';
 
 	let {
-		data
+		data,
+		span,
+		onmouse
 	}: {
 		data: AudioSample;
+		span: Span2D;
+		onmouse?: MouseStateHandler;
 	} = $props();
-
-	let start = $derived(Math.max(0, data.duration() - 0.1));
 </script>
 
-<Waveform {data} span={span2d(start, start + 0.1, -0.1, 0.1)} />
+<Waveform {data} {span} {onmouse} />

@@ -3,14 +3,12 @@ export const DEFAULT_AUDIO_SAMPLERATE = 44100;
 
 export class AudioSample {
     declare data: Float32Array[];
-    declare cow: boolean[];
     declare stride: number;
     declare length: number;
     declare samplerate: number;
 
     constructor(data: Float32Array[] = [], samplerate: number = DEFAULT_AUDIO_SAMPLERATE, stride: number = 128) {
         this.data = [];
-        this.cow = [];
         this.stride = stride;
         this.length = 0;
         this.samplerate = samplerate;
@@ -40,17 +38,9 @@ export class AudioSample {
         while (offset < length) {
             const frame = index % this.stride;
             const chunk = (index - frame) / this.stride;
-            this.handleCow(chunk);
             this.data[chunk][frame] = data[offset];
             offset += 1;
             index += 1;
-        }
-    }
-
-    private handleCow(chunk: number) {
-        if (this.cow[chunk]) {
-            this.data[chunk] = new Float32Array(this.data[chunk]);
-            this.cow[chunk] = false;
         }
     }
 
@@ -60,7 +50,6 @@ export class AudioSample {
         }
         const frame = index % this.stride;
         const chunk = (index - frame) / this.stride;
-        this.handleCow(chunk);
         this.data[chunk][frame] = value;
     }
 
@@ -75,24 +64,20 @@ export class AudioSample {
     resize(length: number) {
         while (length > this.data.length * this.stride) {
             this.data.push(new Float32Array(this.stride));
-            this.cow.push(false);
         }
         const chunkLength = this.chunkIndex(length) + 1;
         if (chunkLength < this.data.length) {
             this.data.splice(chunkLength, this.data.length - chunkLength);
-            this.cow.splice(chunkLength, this.data.length - chunkLength);
         }
         this.length = length;
     }
 
-    copy(): AudioSample {
+    shallowCopy(): AudioSample {
         const copied = new AudioSample();
         copied.data = this.data;
         copied.stride = this.stride;
         copied.length = this.length;
-
-        this.cow = new Array(this.data.length).fill(true);
-        copied.cow = this.cow;
+        copied.samplerate = this.samplerate;
         return copied;
     }
 

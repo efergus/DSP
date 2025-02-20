@@ -1,3 +1,4 @@
+import { remapNumber, span1d, type Span1D } from "$lib/geometry/geometry";
 import type { AudioSample } from "./sample";
 
 export type DrawWaveformOptions = {
@@ -91,32 +92,36 @@ export function draw_waveform(context: CanvasRenderingContext2D, values: Float32
     }
 }
 
-// export function draw_waveform2(context: CanvasRenderingContext2D, values: AudioSample, options: DrawWaveformOptions = {}) {
-//     const canvas = context.canvas;
-//     if (!values.length) {
-//         return;
-//     }
-//     const { offset = 0, scale = canvas.height / 2, x = 0, width = canvas.width } = options;
-//     const y = canvas.height - (options.y ?? (canvas.height / 2));
-//     const length = Math.min(options.limit ?? Infinity, values.length - offset);
+export type AxisLine = {
+    label: string,
+    pos: number,
+    depth: number,
+    index: number
+}
 
-//     if (length * 2 > canvas.width) {
-//         draw_waveform_envelope(context, values, {
-//             offset, limit: length, scale, x, y, width
-//         })
-//     }
-//     else {
-//         const dx = width / length;
+export function axisLines(span: Span1D, density = 2, scale = 1) {
+    const width = span.max - span.min;
+    const magnitude = Math.floor(Math.log10(width));
+    const majorSpacing = 10 ** magnitude;
+    const start = Math.floor(span.min / majorSpacing) * majorSpacing;
 
-//         context.lineWidth = 2;
-//         context.strokeStyle = 'rgb(0 0 0)';
-
-//         context.beginPath();
-//         context.moveTo(x, y);
-//         for (let i = 0; i < length; i++) {
-//             const val = values[i + offset];
-//             context.lineTo(x + dx * i, y - val * scale)
-//         }
-//         context.stroke();
-//     }
-// }
+    const lines: AxisLine[] = [];
+    for (let depth = 0; depth < density; depth++) {
+        const spacing = 10 ** (magnitude - depth);
+        const ticks = Math.ceil((span.max - start) / spacing) + 1;
+        for (let index = 0; index < ticks; index++) {
+            if (depth > 0 && index % 10 === 0) {
+                continue;
+            }
+            const value = start + spacing * index;
+            const pos = remapNumber(value, span, span1d(0, scale));
+            lines.push({
+                label: value.toPrecision(2),
+                pos,
+                depth,
+                index
+            })
+        }
+    }
+    return lines;
+}

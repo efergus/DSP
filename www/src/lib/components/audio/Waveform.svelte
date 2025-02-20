@@ -1,11 +1,7 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE, type AudioSample } from '$lib/audio/sample';
-	import { span2d, type Point, type Span2D } from '$lib/geometry/geometry';
-	import { mouse, type MouseState } from '$lib/input/state';
-
-	export type LocalMouseState = {
-		local: Point;
-	} & MouseState;
+	import { remapNumber, remapPoint, span2d, type Point, type Span2D } from '$lib/geometry/geometry';
+	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 
 	let {
 		data,
@@ -14,8 +10,8 @@
 		height = 200,
 		cursor = 0,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
-		onwheel = () => {},
-		onmouse = () => {}
+		onWheel = () => {},
+		onMouse = () => {}
 	}: {
 		data: AudioSample;
 		span?: Span2D;
@@ -23,8 +19,8 @@
 		width?: number;
 		height?: number;
 		cursor?: number;
-		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
-		onmouse?: (state: LocalMouseState) => void;
+		onWheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
+		onMouse?: MouseStateHandler;
 	} = $props();
 
 	let canvas: HTMLCanvasElement;
@@ -41,7 +37,7 @@
 		const sampleStart = span.x.min * samplerate;
 		const sampleEnd = span.x.max * samplerate;
 		const sampleSpan = sampleEnd - sampleStart;
-		const verticalSpan = span.y.max - span.y.min;
+		const screenSpan = span2d(0, width, 0, height);
 
 		let sampleStartIndex = Math.max(Math.floor(sampleStart), 0);
 		const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
@@ -67,15 +63,17 @@
 					max = Math.max(max, val);
 				}
 
-				const rectY = h2 - Math.ceil((max / verticalSpan) * height);
-				const rectH = Math.ceil(((max - min) / verticalSpan) * height);
+				const mappedMin = remapNumber(min, span.y, screenSpan.y);
+				const mappedMax = remapNumber(max, span.y, screenSpan.y);
+				const rectY = height - mappedMax;
+				const rectH = mappedMax - mappedMin;
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {
 			for (let index = sampleStartIndex; index < sampleEndIndex; index++) {
 				const x = (index - sampleStart) / sampleSpan;
-				const y = sample.getFrame(index) / verticalSpan;
-				context.lineTo(x * width, (-y * height) / 2 + height / 2);
+				const y = remapNumber(sample.getFrame(index), span.y, screenSpan.y);
+				context.lineTo(x * width, height - y);
 			}
 			context.stroke();
 		}
@@ -94,6 +92,8 @@
 	bind:this={canvas}
 	{width}
 	{height}
-	onwheel={(e) => onwheel({ x: e.deltaX, y: e.deltaY }, e)}
-	{...mouse((state) => {})}
+	onwheel={(e) => onWheel({ x: e.deltaX, y: e.deltaY }, e)}
+	{...mouse(onMouse, {
+		remap: span
+	})}
 ></canvas>

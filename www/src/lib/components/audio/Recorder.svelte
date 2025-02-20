@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { audioTapInfo } from '$lib/audio/processor';
+	import { AudioSample } from '$lib/audio/sample';
 	import Circle from '$lib/icons/Circle.svelte';
 	import Square from '$lib/icons/Square.svelte';
+	import Upload from '$lib/icons/Upload.svelte';
+	import { uniqueId } from '../id';
 
 	export type AudioChunk = {
 		index: number;
@@ -9,10 +12,14 @@
 	};
 
 	const {
-		onChunk
+		onData
 	}: {
-		onChunk?: (chunk: AudioChunk) => void;
+		onData?: (data: AudioSample) => void;
 	} = $props();
+
+	const fileInputId = uniqueId();
+
+	let data = $state(new AudioSample());
 
 	let audio: {
 		context: AudioContext;
@@ -22,7 +29,7 @@
 		gain: GainNode;
 	} | null = $state(null);
 	let recording = $state(false);
-	let chunkIndex = 0;
+	let chunkIndex = $state(0);
 
 	const record = async () => {
 		if (!audio) {
@@ -54,11 +61,13 @@
 
 			node.port.onmessage = (event) => {
 				if (recording) {
-					onChunk?.({
-						index: chunkIndex,
-						// TODO handle multiple channels?
-						data: event.data[0]
-					});
+					if (chunkIndex === 0) {
+						data = new AudioSample();
+						length = 0;
+					}
+					data = data.shallowCopy();
+					data.push(event.data[0]);
+					onData?.(data);
 					chunkIndex += 1;
 				}
 			};
@@ -87,10 +96,66 @@
 	};
 </script>
 
-<button onclick={record}>
-	{#if recording}
-		<Square fill="black" />
-	{:else}
-		<Circle stroke="red" fill="red" />
-	{/if}
-</button>
+<div>
+	<label for={fileInputId}>
+		<Upload />
+		<input
+			type="file"
+			id={fileInputId}
+			onchange={(e) => {
+				if (!e.target) {
+					return;
+				}
+				let files = (e.target as HTMLInputElement).files;
+				if (!files?.length) {
+					throw new Error('No files');
+				}
+				let file = files[0];
+
+				let reader = new FileReader();
+				reader.onload = async (e) => {
+					if (!e.target) {
+						return;
+					}
+					const content = e.target.result;
+					let audio_context = new AudioContext();
+					const audio_data = await audio_context.decodeAudioData(content as ArrayBuffer);
+					data = new AudioSample([audio_data.getChannelData(0)]);
+					onData?.(data);
+				};
+
+				reader.readAsArrayBuffer(file);
+			}}
+		/>
+	</label>
+	<button onclick={record}>
+		{#if recording}
+			<Square fill="black" />
+		{:else}
+			<Circle stroke="red" fill="red" />
+		{/if}
+	</button>
+</div>
+
+<style lang="less">
+	div {
+		display: flex;
+		gap: 6px;
+	}
+
+	label {
+		display: block;
+		padding: 6px;
+		border-radius: 6px;
+		background-color: rgba(0, 0, 0, 0.2);
+		width: max-content;
+
+		&:hover {
+			background-color: rgba(0, 0, 0, 0.1);
+		}
+	}
+
+	input {
+		display: none;
+	}
+</style>

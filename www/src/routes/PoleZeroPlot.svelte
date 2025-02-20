@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { complex, complex_conjugate, type Complex } from '$lib/audio/complex';
-	import { mouse, type MouseState } from '$lib/input/state';
+	import { mouse, type MouseState } from '$lib/input/mouse';
 
 	export type ComplexMouseState = {
 		complexPos: Complex;

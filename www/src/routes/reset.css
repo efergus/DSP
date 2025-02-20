@@ -59,7 +59,8 @@ h6 {
 
 :where(button,
     input) {
-    background-color: rgba(0, 0, 0, 0.0);
+    background-color: rgba(0, 0, 0, 0.2);
     border-radius: 4px;
-    border-style: solid;
+    border-style: none;
+    padding: 6px;
 }

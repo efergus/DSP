@@ -12,6 +12,17 @@
 	// $inspect(start);
 </script>
 
-<Tape span={span2d(start, start + window, -0.2, 0.2)} onData={(sample) => (data = sample)} />
-<IirFilterEditor />
-<FilterExplorer />
+<div>
+	<Tape span={span2d(start, start + window, -0.2, 0.2)} onData={(sample) => (data = sample)} />
+	<IirFilterEditor />
+	<FilterExplorer />
+</div>
+
+<style>
+	div {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 6px;
+	}
+</style>

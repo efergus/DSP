@@ -40,17 +40,18 @@
 		const screenSpan = span2d(0, width, 0, height);
 
 		let sampleStartIndex = Math.max(Math.floor(sampleStart), 0);
-		const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
+		// const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
+		const sampleEndIndex = sample.length;
 
 		const h2 = Math.ceil(height / 2);
 
 		if (sampleSpan > width * 2) {
 			context.lineWidth = 1;
 
-			const chunkStride = Math.ceil(sampleSpan / width);
-			sampleStartIndex = sampleStartIndex - (sampleStartIndex % chunkStride);
+			const chunkStride = sampleSpan / width;
+			sampleStartIndex = sampleStartIndex - (sampleStartIndex % Math.floor(chunkStride));
 			for (let chunk = 0; chunk < width; chunk++) {
-				const base = sampleStartIndex + chunk * chunkStride;
+				const base = sampleStartIndex + Math.floor(chunk * chunkStride);
 				if (base >= sample.length) {
 					break;
 				}
@@ -66,7 +67,7 @@
 				const mappedMin = remapNumber(min, span.y, screenSpan.y);
 				const mappedMax = remapNumber(max, span.y, screenSpan.y);
 				const rectY = height - mappedMax;
-				const rectH = mappedMax - mappedMin;
+				const rectH = Math.max(mappedMax - mappedMin, 1);
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {
@@ -92,6 +93,7 @@
 	bind:this={canvas}
 	{width}
 	{height}
+	style={`width: ${width}px; height: ${height}px`}
 	onwheel={(e) => onWheel({ x: e.deltaX, y: e.deltaY }, e)}
 	{...mouse(onMouse, {
 		remap: span

@@ -1,5 +1,5 @@
 import { context } from "$lib/dsp/dsp";
-import { complex_polar } from "./complex";
+import { complex_polar } from "../dsp/complex";
 
 export function whiteNoise(samples = 128, iters = 8) {
     const data = new Float32Array(samples);

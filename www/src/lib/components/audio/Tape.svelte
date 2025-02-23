@@ -5,7 +5,7 @@
 	import Recorder from './Recorder.svelte';
 
 	let {
-		span,
+		span = $bindable(),
 		onData,
 		onMouse
 	}: {
@@ -18,7 +18,7 @@
 </script>
 
 <div>
-	<Player {data} {span} />
+	<Player {data} bind:span />
 	<Recorder
 		onData={(newData) => {
 			data = newData;

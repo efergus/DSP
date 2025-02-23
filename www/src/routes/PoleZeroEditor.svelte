@@ -5,15 +5,11 @@
 		complex_div_scalar,
 		complex_norm,
 		type Complex
-	} from '$lib/audio/complex';
-	import { addConjugates, removeConjugates } from '$lib/audio/iir';
+	} from '$lib/dsp/complex';
+	import { addConjugates } from '$lib/audio/iir';
 	import PoleZeroPlot, { type ComplexMouseState } from './PoleZeroPlot.svelte';
 	import RootEditor from './RootEditor.svelte';
-
-	export type Root = {
-		state: number;
-		val: Complex;
-	};
+	import type { Root } from '$lib/dsp/iir';
 
 	let {
 		roots = $bindable([]),
@@ -141,30 +137,35 @@
 		hover={visuallySelected >= 0 ? roots[visuallySelected]?.val : null}
 		onmouse={handleMouse}
 	/>
-	{#each roots as root, index}
-		<RootEditor
-			polar={true}
-			bind:value={roots[index]}
-			hovered={visuallySelected === index}
-			ondelete={() => handleDelete(index)}
-			onenter={() => {
-				hovered = index;
-			}}
-			onleave={() => {
-				hovered = -1;
-			}}
-			onfocus={() => {
-				active = index;
-			}}
-		/>
-	{/each}
+	<div>
+		{#each roots as root, index}
+			<RootEditor
+				polar={true}
+				bind:value={roots[index]}
+				hovered={visuallySelected === index}
+				ondelete={() => handleDelete(index)}
+				onenter={() => {
+					hovered = index;
+				}}
+				onleave={() => {
+					hovered = -1;
+				}}
+				onfocus={() => {
+					active = index;
+				}}
+			/>
+		{/each}
+	</div>
 </div>
 
 <style lang="less">
 	div {
 		display: flex;
-		flex-direction: column;
 		gap: 0.5em;
+	}
+
+	div > div {
+		flex-direction: column;
 		max-width: 300px;
 	}
 </style>

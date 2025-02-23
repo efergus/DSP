@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { complex, complex_conjugate, type Complex } from '$lib/audio/complex';
+	import { complex, complex_conjugate, type Complex } from '$lib/dsp/complex';
+	import { span2d } from '$lib/geometry/geometry';
 	import { mouse, type MouseState } from '$lib/input/mouse';
 
 	export type ComplexMouseState = {
@@ -173,16 +174,21 @@
 		bind:this={canvas}
 		{width}
 		{height}
-		{...mouse((state) => {
-			let pos = mousePos(state);
-			let delta = complex(px2val(state.delta.x), val2px(-state.delta.y));
-			onmouse?.({
-				complexPos: pos,
-				complexDelta: delta,
-				scale,
-				...state
-			});
-		})}
+		{...mouse(
+			(state) => {
+				let pos = complex(state.pos.x, state.pos.y);
+				let delta = complex(px2val(state.delta.x), val2px(-state.delta.y));
+				onmouse?.({
+					complexPos: pos,
+					complexDelta: delta,
+					scale,
+					...state
+				});
+			},
+			{
+				remap: span2d(-pad, pad, -pad, pad)
+			}
+		)}
 	></canvas>
 </div>
 

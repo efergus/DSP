@@ -5,16 +5,23 @@
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import { span2d } from '$lib/geometry/geometry';
 
-	let data: AudioSample = $state(new AudioSample());
+	const initialSample = new Float32Array(44100);
+	initialSample[0] = 1.0;
+	let data: AudioSample = $state(new AudioSample(initialSample));
+	// $inspect(data);
 
-	let window = 1;
+	let window = 0.8;
 	let start = $derived(Math.max(0, data.duration() - window));
+	let span = $state(span2d(0, window, -0.2, 0.2));
+	$effect(() => {
+		span = span2d(start, start + window, -0.2, 0.2);
+	});
 	// $inspect(start);
 </script>
 
 <div>
-	<Tape span={span2d(start, start + window, -0.2, 0.2)} onData={(sample) => (data = sample)} />
-	<IirFilterEditor />
+	<Tape bind:span onData={(sample) => (data = sample)} />
+	<IirFilterEditor {data} bind:span />
 	<FilterExplorer />
 </div>
 

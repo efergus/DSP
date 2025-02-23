@@ -24,7 +24,7 @@
 		single_pole_low_pass
 	} from '$lib/audio/filter';
 	import PoleZeroPlot from './PoleZeroPlot.svelte';
-	import { complex, complex_norm, complex_polar } from '$lib/audio/complex';
+	import { complex, complex_norm, complex_polar } from '$lib/dsp/complex';
 	import {
 		addConjugates,
 		butterworth,

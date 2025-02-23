@@ -7,7 +7,10 @@ export class AudioSample {
     declare length: number;
     declare samplerate: number;
 
-    constructor(data: Float32Array[] = [], samplerate: number = DEFAULT_AUDIO_SAMPLERATE, stride: number = 128) {
+    constructor(data: Float32Array | Float32Array[] = [], samplerate: number = DEFAULT_AUDIO_SAMPLERATE, stride: number = 128) {
+        if (data instanceof Float32Array) {
+            data = [data];
+        }
         this.data = [];
         this.stride = stride;
         this.length = 0;
@@ -24,6 +27,10 @@ export class AudioSample {
         const frame = index % this.stride;
         const chunk = (index - frame) / this.stride;
         return this.data[chunk][frame];
+    }
+
+    getChunk(chunk: number) {
+        return this.data[chunk];
     }
 
     push(data: Float32Array) {
@@ -83,5 +90,13 @@ export class AudioSample {
 
     duration(): number {
         return this.length / this.samplerate;
+    }
+
+    frames(): number {
+        return this.length;
+    }
+
+    chunks(): number {
+        return this.data.length;
     }
 }

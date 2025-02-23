@@ -1,5 +1,15 @@
-import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_sub, complex_to_real, type Complex } from "../dsp/complex";
-import { polynomial_with_roots, s2z_bilinear, type NumArr } from "./filter";
+import { polynomial_with_roots, s2z_bilinear, type NumArr } from "$lib/audio/filter";
+import { AudioSample } from "$lib/audio/sample";
+import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_to_real, type Complex } from "./complex";
+
+export const ZERO_STATE = 0;
+export const POLE_STATE = 1;
+export const DEAD_STATE = 2;
+
+export type Root = {
+    state: number;
+    val: Complex;
+};
 
 export function addConjugates(roots: Complex[]) {
     return roots.flatMap(x => Math.abs(x.im) > 1e-12 ? [x, complex_conjugate(x)] : [complex(x.re, 0)])
@@ -17,7 +27,7 @@ export function removeConjugates(roots: Complex[], threshold = 1e-12) {
     }
 }
 
-export function coefficients(roots: Complex[]) {
+export function coefficients(roots: Complex[]): Complex[] {
     return polynomial_with_roots(roots);
 }
 
@@ -63,35 +73,6 @@ export class Iir {
         this._forward.set(coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain / this._back[0]));
     }
 
-    // TODO rename these response functions
-    response(freq: number): Complex {
-        let z = complex_polar(2 * Math.PI * freq);
-
-        let numerator = complex(0);
-        for (let i = 0; i < this._forward.length; i++) {
-            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-            numerator = complex_add(numerator, complex_mul_scalar(z_inv_i, this._forward[i]));
-        }
-
-        let denominator = complex(0);
-        for (let i = 0; i < this._back.length; i++) {
-            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-            denominator = complex_add(denominator, complex_mul_scalar(z_inv_i, this._back[i]));
-        }
-
-        return complex_div(numerator, denominator);
-    }
-
-    response_norm(freq: number): number {
-        let response_complex = this.response(freq);
-        return complex_norm(response_complex);
-    }
-
-    response_phase(freq: number): number {
-        let response_complex = this.response(freq);
-        return complex_phase(response_complex);
-    }
-
     order(): number {
         return Math.max(this.zeros.length, this.poles.length);
     }
@@ -107,7 +88,22 @@ export class IirDigital extends Iir {
         super(zeros, poles, gain);
     }
 
-    apply(input: NumArr, pastInput?: NumArr, pastOutput?: NumArr): Float32Array {
+    static from_roots(roots: Root[], gain = 1) {
+        return new IirDigital(
+            addConjugates(roots.filter(({ state }) => state === ZERO_STATE).map(({ val }) => val)),
+            addConjugates(roots.filter(({ state }) => state === POLE_STATE).map(({ val }) => val)),
+            gain
+        );
+    }
+
+    apply(input: NumArr | AudioSample, pastInput?: NumArr, pastOutput?: NumArr): Float32Array {
+        let getInput;
+        if (input instanceof AudioSample) {
+            getInput = (index: number) => input.getFrame(index);
+        }
+        else {
+            getInput = (index: number) => input[index]
+        }
         const N = this.order() + 1;
         pastOutput = pastOutput ?? new Float32Array(0);
         pastInput = pastInput ?? new Float32Array(0);
@@ -119,7 +115,7 @@ export class IirDigital extends Iir {
                     y += pastInput[pastInput.length + idx - delay] * this._forward[delay];
                 }
                 else {
-                    y += input[idx - delay] * this._forward[delay];
+                    y += getInput(idx - delay) * this._forward[delay];
                 }
             }
             y *= this.gain;
@@ -151,11 +147,11 @@ export class IirContinuous extends Iir {
         let zeros = transformed_zeros.concat(new Array(N - this.zeros.length).fill(complex(-1)));
         let poles = transformed_poles.concat(new Array(N - this.poles.length).fill(complex(-1)));
 
-        const filter = new IirDigital(zeros, poles);
-        const target_response = filter.response_norm(freq);
-        const our_response = this.freq_response(freq);
-        filter.gain = our_response / target_response;
-        filter._calculateCoefficients();
+        const filter = new IirDigital(zeros, poles, this.gain);
+        // const target_response = filter.response_norm(freq);
+        // const our_response = this.freq_response(freq);
+        // filter.gain = our_response / target_response;
+        // filter._calculateCoefficients();
         // console.log("gains", dc_response, filter.gain, this.gain)
 
         return filter;
@@ -195,4 +191,19 @@ export function single_pole_bandstop(freq: number, width: number) {
 
 export function single_pole_bandpass(freq: number, width: number) {
     return new IirDigital(addConjugates([complex_polar(freq, 0.95 - width)]), addConjugates([complex_polar(freq, 0.95)]))
+}
+
+export function filterRoots(filter: IirDigital): Root[] {
+    return filter.zeros
+        .map((val) => ({
+            state: 0,
+            val
+        }))
+        .concat(
+            filter.poles.map((val) => ({
+                state: 1,
+                val
+            }))
+        )
+        .filter((root) => root.val.im >= 0);
 }

@@ -8,7 +8,7 @@
 		degrees_to_rad,
 		rad_to_degrees,
 		type Complex
-	} from '$lib/audio/complex';
+	} from '$lib/dsp/complex';
 	import { uniqueId } from '$lib/components/id';
 	import NumberInput from '$lib/components/NumberInput.svelte';
 	import Circle from '$lib/icons/Circle.svelte';

@@ -1,7 +1,13 @@
 <script lang="ts">
-	import { DEFAULT_AUDIO_SAMPLERATE, type AudioSample } from '$lib/audio/sample';
+	import {
+		DEFAULT_AUDIO_SAMPLERATE,
+		SampleSlice,
+		type Sample,
+		type SampleData
+	} from '$lib/audio/sample';
 	import { remapNumber, remapPoint, span2d, type Point, type Span2D } from '$lib/geometry/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
+	import { onMount } from 'svelte';
 
 	let {
 		data,
@@ -13,7 +19,7 @@
 		onWheel = () => {},
 		onMouse = () => {}
 	}: {
-		data: AudioSample;
+		data: Sample;
 		span?: Span2D;
 		samplerate?: number;
 		width?: number;
@@ -25,7 +31,7 @@
 
 	let canvas: HTMLCanvasElement;
 
-	const draw = (context: CanvasRenderingContext2D, sample: AudioSample) => {
+	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
 		context.fillStyle = 'rgb(200 200 200)';
 		context.fillRect(0, 0, width, height);
 		context.beginPath();
@@ -55,11 +61,11 @@
 				if (base >= sample.length) {
 					break;
 				}
-				const val = sample.getFrame(base);
+				const val = sample.get(base);
 				let min = val;
 				let max = val;
 				for (let index = 0; index < chunkStride && base + index < sampleEndIndex; index++) {
-					const val = sample.getFrame(base + index);
+					const val = sample.get(base + index);
 					min = Math.min(min, val);
 					max = Math.max(max, val);
 				}
@@ -73,19 +79,24 @@
 		} else {
 			for (let index = sampleStartIndex; index < sampleEndIndex; index++) {
 				const x = (index - sampleStart) / sampleSpan;
-				const y = remapNumber(sample.getFrame(index), span.y, screenSpan.y);
+				const y = remapNumber(sample.get(index), span.y, screenSpan.y);
 				context.lineTo(x * width, height - y);
 			}
 			context.stroke();
 		}
 	};
 
-	$effect(() => {
-		const context = canvas?.getContext('2d');
+	onMount(() => {
+		const context = canvas.getContext('2d');
 		if (!context) {
+			console.warn('No context!');
 			return;
 		}
-		draw(context, data);
+		const drawData = () => {
+			draw(context, data);
+			requestAnimationFrame(drawData);
+		};
+		requestAnimationFrame(drawData);
 	});
 </script>
 

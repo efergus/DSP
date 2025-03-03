@@ -1,5 +1,5 @@
-import { polynomial_with_roots, s2z_bilinear, type NumArr } from "$lib/audio/filter";
-import { AudioSample } from "$lib/audio/sample";
+import { polynomial_with_roots, s2z_bilinear } from "$lib/audio/filter";
+import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
 import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_to_real, type Complex } from "./complex";
 
 export const ZERO_STATE = 0;
@@ -96,32 +96,29 @@ export class IirDigital extends Iir {
         );
     }
 
-    apply(input: NumArr | AudioSample, pastInput?: NumArr, pastOutput?: NumArr): Float32Array {
-        let getInput;
-        if (input instanceof AudioSample) {
-            getInput = (index: number) => input.getFrame(index);
-        }
-        else {
-            getInput = (index: number) => input[index]
-        }
+    apply(input: NumArr | Sample, pastInput?: NumArr | Sample, pastOutput?: NumArr | Sample, outputBuffer?: Float32Array): Float32Array {
+        const inputView = new SampleView(input);
+        const pastInputView = new SampleView(pastInput ?? null);
+        const pastOutputView = new SampleView(pastOutput ?? null);
         const N = this.order() + 1;
-        pastOutput = pastOutput ?? new Float32Array(0);
-        pastInput = pastInput ?? new Float32Array(0);
-        const output = new Float32Array(input.length);
+        if (outputBuffer && outputBuffer.length < inputView.length) {
+            throw new Error(`Output buffer shorter than input buffer (${outputBuffer.length} < ${inputView.length})`)
+        }
+        const output = outputBuffer ?? new Float32Array(inputView.length);
         for (let idx = 0; idx < input.length; idx++) {
             let y = 0;
-            for (let delay = 0; delay < N && delay <= pastInput.length + idx; delay++) {
+            for (let delay = 0; delay < N && delay <= pastInputView.length + idx; delay++) {
                 if (delay > idx) {
-                    y += pastInput[pastInput.length + idx - delay] * this._forward[delay];
+                    y += pastInputView.get(pastInputView.length + idx - delay) * this._forward[delay];
                 }
                 else {
-                    y += getInput(idx - delay) * this._forward[delay];
+                    y += inputView.get(idx - delay) * this._forward[delay];
                 }
             }
             y *= this.gain;
-            for (let delay = 1; delay < N && delay <= pastOutput.length + idx; delay++) {
+            for (let delay = 1; delay < N && delay <= pastOutputView.length + idx; delay++) {
                 if (delay > idx) {
-                    y -= pastOutput[pastOutput.length + idx - delay] * this._back[delay]
+                    y -= pastOutputView.get(pastOutputView.length + idx - delay) * this._back[delay]
                 }
                 else {
                     y -= output[idx - delay] * this._back[delay];

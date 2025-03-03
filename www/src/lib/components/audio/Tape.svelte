@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { AudioSample } from '$lib/audio/sample';
+	import { SampleData, type Sample } from '$lib/audio/sample';
 	import { type Span2D } from '$lib/geometry/geometry';
+	import AudioFileInput from './AudioFileInput.svelte';
 	import Player from './Player.svelte';
 	import Recorder from './Recorder.svelte';
 
@@ -10,21 +11,24 @@
 		onMouse
 	}: {
 		span: Span2D;
-		onData?: (sample: AudioSample) => void;
+		onData?: (sample: SampleData) => void;
 		onMouse?: () => void;
 	} = $props();
 
-	let data = $state(new AudioSample());
+	let data: SampleData = $state(new SampleData());
 </script>
 
 <div>
-	<Player {data} bind:span />
-	<Recorder
-		onData={(newData) => {
-			data = newData;
-			onData?.(data);
-		}}
-	/>
+	<Player {data} bind:span>
+		<AudioFileInput {onData} />
+
+		<Recorder
+			onData={(sample) => {
+				data = sample;
+				onData?.(sample);
+			}}
+		/>
+	</Player>
 </div>
 
 <style lang="less">

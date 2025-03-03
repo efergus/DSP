@@ -1,5 +1,5 @@
 import { remapNumber, span1d, type Span1D } from "$lib/geometry/geometry";
-import type { AudioSample } from "./sample";
+import type { SampleData } from "./sample";
 
 export type DrawWaveformOptions = {
     offset?: number;

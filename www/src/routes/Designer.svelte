@@ -1,22 +1,31 @@
 <script lang="ts">
-	import { AudioSample } from '$lib/audio/sample';
+	import { SampleData, type Sample } from '$lib/audio/sample';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import FilterExplorer from '$lib/components/filters/FilterExplorer.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import { span2d } from '$lib/geometry/geometry';
+	import { onMount } from 'svelte';
 
 	const initialSample = new Float32Array(44100);
 	initialSample[0] = 1.0;
-	let data: AudioSample = $state(new AudioSample(initialSample));
-	// $inspect(data);
+	let data: SampleData = $state(new SampleData(initialSample));
 
 	let window = 0.8;
-	let start = $derived(Math.max(0, data.duration() - window));
 	let span = $state(span2d(0, window, -0.2, 0.2));
-	$effect(() => {
-		span = span2d(start, start + window, -0.2, 0.2);
+
+	onMount(() => {
+		let lastDuration = 0;
+		const updateSpan = () => {
+			const duration = data.duration();
+			if (duration !== lastDuration) {
+				const start = Math.max(0, duration - window);
+				span = span2d(start, start + window, -0.2, 0.2);
+				lastDuration = duration;
+			}
+			requestAnimationFrame(updateSpan);
+		};
+		requestAnimationFrame(updateSpan);
 	});
-	// $inspect(start);
 </script>
 
 <div>

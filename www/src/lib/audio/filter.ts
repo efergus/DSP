@@ -1,7 +1,6 @@
 import { complex, complex_add, complex_div, complex_mul, complex_mul_scalar, complex_norm2, complex_polar, complex_sub, type Complex } from "../dsp/complex";
 import { realCoefficients } from "./iir";
-
-export type NumArr = number[] | Float32Array | Float64Array;
+import type { NumArr } from "./sample";
 
 type IIRFilter = {
     forward: number[];

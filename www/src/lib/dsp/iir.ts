@@ -1,6 +1,6 @@
 import { polynomial_with_roots, s2z_bilinear } from "$lib/audio/filter";
 import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
-import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_to_real, type Complex } from "./complex";
+import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
 
 export const ZERO_STATE = 0;
 export const POLE_STATE = 1;
@@ -76,6 +76,10 @@ export class Iir {
     order(): number {
         return Math.max(this.zeros.length, this.poles.length);
     }
+
+    // response(zValue: Complex): Complex {
+
+    // }
 }
 
 export type ApplyIirOptions = {
@@ -128,6 +132,64 @@ export class IirDigital extends Iir {
         }
         return output;
     }
+
+    frequency_response(freq: number): Complex {
+        let z = complex_polar(2 * Math.PI * freq);
+
+        let numerator = complex(0);
+        for (let i = 0; i < this._forward.length; i++) {
+            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
+            numerator = complex_add(numerator, complex_mul_scalar(z_inv_i, this._forward[i]));
+        }
+
+        let denominator = complex(0);
+        for (let i = 0; i < this._back.length; i++) {
+            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
+            denominator = complex_add(denominator, complex_mul_scalar(z_inv_i, this._back[i]));
+        }
+
+        return complex_div(numerator, denominator);
+    }
+
+    frequency_response_norm(freq: number): number {
+        let response_complex = this.frequency_response(freq);
+        return complex_norm(response_complex);
+    }
+
+    frequency_response_norm_2(freq: number): number {
+        let numerator = 1;
+        let point = complex_polar(freq * Math.PI);
+        for (let i = 0; i < this.zeros.length; i++) {
+            numerator *= complex_dist(this.zeros[i], point);
+        }
+
+        let denominator = 1;
+        for (let i = 0; i < this.poles.length; i++) {
+            denominator *= complex_dist(this.poles[i], point);
+        }
+
+        return numerator / denominator * this.gain;
+    }
+
+    frequency_response_phase(freq: number): number {
+        let response_complex = this.frequency_response(freq);
+        return complex_phase(response_complex);
+    }
+
+    // TODO test this
+    frequency_response_phase_2(freq: number): number {
+        let acc = freq * (this.poles.length - this.zeros.length);
+        let point = complex_polar(freq * Math.PI / 2);
+        for (let i = 0; i < this.zeros.length; i++) {
+            acc += complex_phase(complex_sub(point, this.zeros[i]));
+        }
+
+        for (let i = 0; i < this.poles.length; i++) {
+            acc -= complex_phase(complex_sub(point, this.poles[i]));
+        }
+
+        return acc;
+    }
 }
 
 export class IirContinuous extends Iir {
@@ -154,7 +216,7 @@ export class IirContinuous extends Iir {
         return filter;
     }
 
-    freq_response(freq: number): number {
+    frequency_response_norm(freq: number): number {
         let numerator = 1;
         let point = complex(0, freq);
         for (let i = 0; i < this.zeros.length; i++) {

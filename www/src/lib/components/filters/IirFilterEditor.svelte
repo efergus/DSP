@@ -1,7 +1,6 @@
 <script lang="ts">
-	import { butterworth, single_pole_bandpass } from '$lib/audio/iir';
 	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { filterRoots, IirDigital, type Root } from '$lib/dsp/iir';
+	import { filterRoots, IirDigital, single_pole_bandpass, type Root } from '$lib/dsp/iir';
 	import type { Span2D } from '$lib/geometry/geometry';
 	import { onMount } from 'svelte';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';

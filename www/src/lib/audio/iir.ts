@@ -1,5 +1,6 @@
 import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_sub, complex_to_real, type Complex } from "../dsp/complex";
-import { polynomial_with_roots, s2z_bilinear, type NumArr } from "./filter";
+import { polynomial_with_roots, s2z_bilinear } from "./filter";
+import type { NumArr } from "./sample";
 
 export function addConjugates(roots: Complex[]) {
     return roots.flatMap(x => Math.abs(x.im) > 1e-12 ? [x, complex_conjugate(x)] : [complex(x.re, 0)])

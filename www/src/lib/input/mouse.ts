@@ -1,4 +1,4 @@
-import { point, pointCopy, type Point, type Span2D } from "$lib/geometry/geometry";
+import { point, type Point, type Span2D } from "$lib/geometry/geometry";
 
 export type SavedMouseState = {
     down: boolean,
@@ -82,9 +82,9 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
         internalState.moved += Math.sqrt(event.movementX ** 2 + event.movementY ** 2);
         let now = Date.now();
         if (!internalState.down && down) {
-            internalState.start = pointCopy(pos);
-            internalState.start = pointCopy(pixelPos);
-            internalState.start = pointCopy(globalPos);
+            internalState.start = pos.copy();
+            internalState.start = pixelPos.copy();
+            internalState.start = globalPos.copy();
             internalState.startTime = now;
             internalState.moved = 0;
             edgeDown = true;

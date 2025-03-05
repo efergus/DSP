@@ -1,5 +1,4 @@
-import { remapNumber, span1d, type Span1D } from "$lib/geometry/geometry";
-import type { SampleData } from "./sample";
+import { span1d, type Span1D } from "$lib/geometry/geometry";
 
 export type DrawWaveformOptions = {
     offset?: number;
@@ -114,7 +113,7 @@ export function axisLines(span: Span1D, density = 2, scale = 1) {
                 continue;
             }
             const value = start + spacing * index;
-            const pos = remapNumber(value, span, span1d(0, scale));
+            const pos = span.remap(value, span1d(0, scale));
             lines.push({
                 label: value.toPrecision(2),
                 pos,

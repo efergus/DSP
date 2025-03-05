@@ -8,6 +8,7 @@
 		width = 40,
 		density = 2,
 		span,
+		limits,
 		vertical = false,
 		onScale
 	}: {
@@ -15,6 +16,7 @@
 		width?: number;
 		density?: number;
 		span: Span1D;
+		limits?: Span1D;
 		vertical?: boolean;
 		onScale?: (span: Span1D) => void;
 	} = $props();
@@ -58,10 +60,13 @@
 	)}
 	onwheel={(event) => {
 		event.preventDefault();
-		const factor = Math.exp(-event.deltaY / 100);
-		const deltaLeft = span.min - mousePos;
-		const deltaRight = span.max - mousePos;
-		onScale?.(span1d(mousePos + deltaLeft * factor, mousePos + deltaRight * factor));
+		let apxDeltaPixels = -event.deltaY * 10 ** event.deltaMode;
+		const factor = Math.exp(-apxDeltaPixels / 100);
+		let newScale = span.scale(factor, mousePos);
+		if (limits) {
+			newScale = limits;
+		}
+		onScale?.(newScale);
 	}}
 >
 	{#if vertical}

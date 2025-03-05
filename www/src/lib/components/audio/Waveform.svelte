@@ -5,7 +5,7 @@
 		type Sample,
 		type SampleData
 	} from '$lib/audio/sample';
-	import { remapNumber, remapPoint, span2d, type Point, type Span2D } from '$lib/geometry/geometry';
+	import { span2d, type Point, type Span2D } from '$lib/geometry/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
 
@@ -15,6 +15,7 @@
 		width = 400,
 		height = 200,
 		cursor = 0,
+		strokeWidth = 2,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
 		onWheel = () => {},
 		onMouse = () => {}
@@ -25,6 +26,7 @@
 		width?: number;
 		height?: number;
 		cursor?: number;
+		strokeWidth?: number;
 		onWheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
 		onMouse?: MouseStateHandler;
 	} = $props();
@@ -36,9 +38,11 @@
 		context.fillRect(0, 0, width, height);
 		context.beginPath();
 		context.strokeStyle = 'black';
-		context.lineWidth = 2;
+		context.lineWidth = strokeWidth;
 		context.fillStyle = 'black';
 		context.lineJoin = 'round';
+
+		const stroke = strokeWidth / 2;
 
 		const sampleStart = span.x.min * samplerate;
 		const sampleEnd = span.x.max * samplerate;
@@ -70,16 +74,16 @@
 					max = Math.max(max, val);
 				}
 
-				const mappedMin = remapNumber(min, span.y, screenSpan.y);
-				const mappedMax = remapNumber(max, span.y, screenSpan.y);
-				const rectY = height - mappedMax;
-				const rectH = Math.max(mappedMax - mappedMin, 1);
+				const mappedMin = span.y.remap(min, screenSpan.y);
+				const mappedMax = span.y.remap(max, screenSpan.y);
+				const rectY = height - mappedMax - stroke;
+				const rectH = mappedMax - mappedMin + stroke;
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {
 			for (let index = sampleStartIndex; index < sampleEndIndex; index++) {
 				const x = (index - sampleStart) / sampleSpan;
-				const y = remapNumber(sample.get(index), span.y, screenSpan.y);
+				const y = span.y.remap(sample.get(index), screenSpan.y);
 				context.lineTo(x * width, height - y);
 			}
 			context.stroke();

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { type Span2D } from '$lib/geometry/geometry';
+	import { span1d, type Span2D } from '$lib/geometry/geometry';
 	import AudioFileInput from './AudioFileInput.svelte';
 	import Player from './Player.svelte';
 	import Recorder from './Recorder.svelte';
@@ -19,7 +19,14 @@
 </script>
 
 <div>
-	<Player {data} bind:span>
+	<Player
+		{data}
+		bind:span={() => span,
+		(newSpan) => {
+			span = newSpan.copy();
+			span.x = newSpan.x.intersect(span1d(0, data.duration() * 1.1));
+		}}
+	>
 		<AudioFileInput {onData} />
 
 		<Recorder

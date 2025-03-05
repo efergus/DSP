@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Sample } from '$lib/audio/sample';
-	import { span2d, span2dMove, type Span2D } from '$lib/geometry/geometry';
+	import { span2d, type Span2D } from '$lib/geometry/geometry';
 	import type { MouseStateHandler } from '$lib/input/mouse';
 	import type { Snippet } from 'svelte';
 	import Axis from './Axis.svelte';
@@ -35,7 +35,7 @@
 			onMouse={(state) => {
 				// console.log(state.pos, state.pixelPos, state.delta);
 				if (state.down) {
-					span = span2dMove(span, -state.delta.x, -state.delta.y);
+					span = span.move(-state.delta.x, -state.delta.y);
 				}
 			}}
 		/>

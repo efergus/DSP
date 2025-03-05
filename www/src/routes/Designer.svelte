@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
 	import Tape from '$lib/components/audio/Tape.svelte';
-	import FilterExplorer from '$lib/components/filters/FilterExplorer.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import { span2d } from '$lib/geometry/geometry';
 	import { onMount } from 'svelte';
@@ -31,7 +30,6 @@
 <div>
 	<Tape bind:span onData={(sample) => (data = sample)} />
 	<IirFilterEditor {data} bind:span />
-	<FilterExplorer />
 </div>
 
 <style>

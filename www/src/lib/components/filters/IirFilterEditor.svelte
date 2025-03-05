@@ -6,6 +6,7 @@
 	import { onMount } from 'svelte';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import Waveform from '../audio/Waveform.svelte';
+	import FilterDetails from './FilterDetails.svelte';
 
 	const { data, span = $bindable() }: { data: SampleData; span: Span2D } = $props();
 
@@ -29,14 +30,16 @@
 
 	const updateFilteredData = (sample: SampleData, filter: IirDigital) => {
 		let startIndex = 0;
-		if (sample === previousInput && filter === previousFilter) {
+		if (sample === previousInput) {
 			startIndex = filteredData.length;
 		} else {
 			previousInput = sample;
 			previousFilter = filter;
 			filteredData = new SampleData();
 		}
-		filteredData.push(filter.apply(sample.slice(startIndex)));
+		filteredData.push(
+			filter.apply(sample.slice(startIndex), sample.slice(0, startIndex), filteredData)
+		);
 	};
 
 	onMount(() => {
@@ -49,4 +52,5 @@
 </script>
 
 <PoleZeroEditor bind:roots conjugate />
+<FilterDetails filter={digital_filter} />
 <Waveform data={filteredData} {span} />

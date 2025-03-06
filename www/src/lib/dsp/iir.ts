@@ -1,6 +1,6 @@
 import { polynomial_with_roots, s2z_bilinear } from "$lib/audio/filter";
 import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
-import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul_scalar, complex_norm, complex_phase, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
+import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_phase, complex_phase_2, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
 
 export const ZERO_STATE = 0;
 export const POLE_STATE = 1;
@@ -41,14 +41,14 @@ export class Iir {
     declare _state: number[];
     declare zeros: Complex[];
     declare poles: Complex[];
-    declare gain: number;
+    declare _gain: number;
 
     constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1) {
         this._forward = new Float32Array([1]);
         this._back = new Float32Array([1]);
         this.zeros = zeros;
         this.poles = poles;
-        this.gain = gain;
+        this._gain = gain;
 
         this._calculateCoefficients();
     }
@@ -69,16 +69,38 @@ export class Iir {
         this._back = new Float32Array(N);
         // this._forward = coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain);
         // this._back = coefficients(this.poles).map(complex_to_real);
-        this._back.set(coefficients(this.poles).map(complex_to_real));
-        this._forward.set(coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain / this._back[0]));
+        const back = coefficients(this.poles).map(complex_to_real)
+        this._back.set(back.map((val) => val / back[0]));
+        this._forward.set(coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain / back[0]));
     }
 
     order(): number {
         return Math.max(this.zeros.length, this.poles.length);
     }
 
-    // response(zValue: Complex): Complex {
+    get gain(): number {
+        return this._gain;
+    }
 
+    set gain(value: number) {
+        this._gain = value;
+        this._calculateCoefficients();
+    }
+
+    // response(zValue: Complex): Complex {
+    //     let numerator = complex(0);
+    //     for (let i = 0; i < this._forward.length; i++) {
+    //         let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
+    //         numerator = complex_add(numerator, complex_mul_scalar(z_inv_i, this._forward[i]));
+    //     }
+
+    //     let denominator = complex(0);
+    //     for (let i = 0; i < this._back.length; i++) {
+    //         let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
+    //         denominator = complex_add(denominator, complex_mul_scalar(z_inv_i, this._back[i]));
+    //     }
+
+    //     return complex_div(numerator, denominator);
     // }
 }
 
@@ -119,7 +141,7 @@ export class IirDigital extends Iir {
                     y += inputView.get(idx - delay) * this._forward[delay];
                 }
             }
-            y *= this.gain;
+            // y *= this.gain;
             for (let delay = 1; delay < N && delay <= pastOutputView.length + idx; delay++) {
                 if (delay > idx) {
                     y -= pastOutputView.get(pastOutputView.length + idx - delay) * this._back[delay]
@@ -134,8 +156,6 @@ export class IirDigital extends Iir {
     }
 
     frequency_response(freq: number): Complex {
-        let z = complex_polar(2 * Math.PI * freq);
-
         let numerator = complex(0);
         for (let i = 0; i < this._forward.length; i++) {
             let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
@@ -150,6 +170,11 @@ export class IirDigital extends Iir {
 
         return complex_div(numerator, denominator);
     }
+
+    // use quotient rule (f/g)' = (f'g-fg')/(g^2)
+    // frequency_response_derivative(freq: number): Complex {
+
+    // }
 
     frequency_response_norm(freq: number): number {
         let response_complex = this.frequency_response(freq);
@@ -171,24 +196,127 @@ export class IirDigital extends Iir {
         return numerator / denominator * this.gain;
     }
 
-    frequency_response_phase(freq: number): number {
-        let response_complex = this.frequency_response(freq);
-        return complex_phase(response_complex);
+    frequency_response_norm_derivative_approx(freq: number, h = 1e-4): number {
+        const f1 = this.frequency_response_norm(freq + h);
+        const f2 = this.frequency_response_norm(freq - h);
+        return (f1 - f2) / (2 * h);
     }
 
-    // TODO test this
-    frequency_response_phase_2(freq: number): number {
+    /**
+     * Finds the frequency with maximum frequency response using gradient ascent optimization.
+     * 
+     * This method uses gradient ascent to climb towards a local maximum, then refines the result
+     * using binary search once the gradient becomes small or unstable.
+     * 
+     * @param start_freq - The initial frequency to start the gradient ascent from
+     * @param h - The step size used for both gradient approximation and optimization (default: 1e-4)
+     * @param max_iter - Maximum number of gradient ascent iterations to perform (default: 100)
+     * @returns The frequency with locally maximum frequency response magnitude
+     */
+    max_frequency_response_gradient_ascent(start_freq: number, h = 1e-4, max_iter = 100): number {
+        let freq = start_freq;
+        for (let iter = 0; iter < max_iter; iter++) {
+            let df = this.frequency_response_norm_derivative_approx(freq, h);
+            let new_freq = freq + df * h;
+            if (this.frequency_response_norm(new_freq) > this.frequency_response_norm(freq)) {
+                freq = new_freq;
+            }
+            else {
+                return this.max_frequency_response_bisection(freq - h, freq + h, max_iter);
+            }
+        }
+        return freq;
+    }
+
+    /**
+     * Finds the frequency with maximum frequency response within a given range using binary search.
+     * 
+     * @param start_freq - The lower bound of the frequency range to search
+     * @param end_freq - The upper bound of the frequency range to search  
+     * @param max_iter - Maximum number of binary search iterations to perform
+     * @returns The frequency with the highest frequency response magnitude found
+     */
+    max_frequency_response_bisection(start_freq: number, end_freq: number, max_iter = 100): number {
+        let low = start_freq;
+        let high = end_freq;
+        let mid = (low + high) / 2;
+        for (let iter = 0; iter < max_iter && low < high; iter++) {
+            if (this.frequency_response_norm(mid) > this.frequency_response_norm(low)) {
+                low = mid;
+            }
+            else {
+                high = mid;
+            }
+        }
+        return mid;
+    }
+
+    /**
+     * Finds the frequency with maximum frequency response within a given range using sensible defaults.
+     * 
+     * Note: Not guaranteed to find the global maximum or to be the most efficient method.
+     */
+    max_frequency_response(): number {
+        const samples = (this.order() + 4) * 4;
+        let max_freq = 0;
+        let max_response = 0;
+        for (let idx = 0; idx < samples; idx++) {
+            const freq = idx / samples / 2;
+            const response = this.frequency_response_norm(freq);
+            if (response > max_response) {
+                max_response = response;
+                max_freq = freq;
+            }
+        }
+        for (let idx = 0; idx < this.zeros.length; idx++) {
+            if (this.zeros[idx].im <= 0) {
+                continue;
+            }
+            const freq = complex_phase(this.zeros[idx]) / Math.PI / 2;
+            if (this.frequency_response_norm(freq) > max_response) {
+                max_response = this.frequency_response_norm(freq);
+                max_freq = freq;
+            }
+        }
+        for (let idx = 0; idx < this.poles.length; idx++) {
+            if (this.poles[idx].im <= 0) {
+                continue;
+            }
+            const freq = complex_phase(this.poles[idx]) / Math.PI / 2;
+            if (this.frequency_response_norm(freq) > max_response) {
+                max_response = this.frequency_response_norm(freq);
+                max_freq = freq;
+            }
+        }
+        return this.max_frequency_response_gradient_ascent(max_freq);
+    }
+
+    frequency_response_phase(freq: number): number {
         let acc = freq * (this.poles.length - this.zeros.length);
-        let point = complex_polar(freq * Math.PI / 2);
+        let point = complex_polar(freq * Math.PI * 2);
+        let one = complex(1, 0);
+        const angle = (target: Complex) => {
+            const toPoint = complex_sub(point, target);
+            const toOne = complex_sub(one, target);
+            const rotated = complex_mul(toPoint, complex_conjugate(toOne));
+            const angle = complex_phase_2(rotated);
+            const startAngle = complex_phase(toOne);
+            return angle + startAngle;
+        }
         for (let i = 0; i < this.zeros.length; i++) {
-            acc += complex_phase(complex_sub(point, this.zeros[i]));
+            acc += angle(this.zeros[i]);
         }
 
         for (let i = 0; i < this.poles.length; i++) {
-            acc -= complex_phase(complex_sub(point, this.poles[i]));
+            acc -= angle(this.poles[i]);
         }
 
         return acc;
+    }
+
+    frequency_response_phase_2(freq: number): number {
+        let response_complex = this.frequency_response(freq);
+        return complex_phase(response_complex);
     }
 }
 

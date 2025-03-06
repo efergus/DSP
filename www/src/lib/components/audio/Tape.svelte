@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
+	import { chirp_sample } from '$lib/dsp/samples';
 	import { span1d, type Span2D } from '$lib/geometry/geometry';
 	import AudioFileInput from './AudioFileInput.svelte';
-	import Player from './Player.svelte';
+	import PlayerComponent from './PlayerComponent.svelte';
 	import Recorder from './Recorder.svelte';
 
 	let {
@@ -19,15 +20,20 @@
 </script>
 
 <div>
-	<Player
+	<PlayerComponent
 		{data}
 		bind:span={() => span,
 		(newSpan) => {
 			span = newSpan.copy();
-			span.x = newSpan.x.intersect(span1d(0, data.duration() * 1.1));
+			span.x = newSpan.x.intersect(span1d(0, data.duration()));
 		}}
 	>
-		<AudioFileInput {onData} />
+		<AudioFileInput
+			onData={(sample) => {
+				data = sample;
+				onData?.(sample);
+			}}
+		/>
 
 		<Recorder
 			onData={(sample) => {
@@ -35,7 +41,14 @@
 				onData?.(sample);
 			}}
 		/>
-	</Player>
+
+		<button
+			onclick={() => {
+				data = chirp_sample(20, 2000);
+				onData?.(data);
+			}}>Chirp</button
+		>
+	</PlayerComponent>
 </div>
 
 <style lang="less">

@@ -39,6 +39,10 @@ export class Span1D {
     remap(value: number, to: Span1D): number {
         return to.min + (value - this.min) * (to.max - to.min) / (this.max - this.min);
     }
+
+    equals(span: Span1D): boolean {
+        return this.min === span.min && this.max === span.max;
+    }
 }
 
 export class Span2D {
@@ -94,6 +98,9 @@ export class Span2D {
         return Span2D.intersect(this, span);
     }
     
+    equals(span: Span2D): boolean {
+        return this.x.equals(span.x) && this.y.equals(span.y);
+    }
 }
 
 export function point(x = 0, y = 0): Point {

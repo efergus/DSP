@@ -1,10 +1,11 @@
 <script lang="ts">
-	import type { Sample } from '$lib/audio/sample';
+	import { SampleData, type Sample } from '$lib/audio/sample';
 	import { span2d, type Span2D } from '$lib/geometry/geometry';
 	import type { MouseStateHandler } from '$lib/input/mouse';
 	import type { Snippet } from 'svelte';
 	import Axis from './Axis.svelte';
 	import Waveform from './Waveform.svelte';
+	import { Player } from '$lib/audio/player';
 
 	let {
 		data,
@@ -50,6 +51,14 @@
 	</div>
 	<div class="buttons">
 		{@render children?.()}
+		<button
+			onclick={() => {
+				const player = new Player();
+				player.play(new SampleData(data));
+			}}
+		>
+			Play
+		</button>
 	</div>
 </div>
 

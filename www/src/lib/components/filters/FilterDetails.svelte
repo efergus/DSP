@@ -6,5 +6,15 @@
 	const { filter }: { filter: IirDigital } = $props();
 </script>
 
-<TimeResponse {filter} />
-<FrequencyResponse {filter} />
+<div>
+	<TimeResponse {filter} />
+	<FrequencyResponse {filter} />
+</div>
+
+<style lang="less">
+	div {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+</style>

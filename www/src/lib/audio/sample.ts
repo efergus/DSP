@@ -1,3 +1,5 @@
+import { span1d, type Span1D } from "$lib/geometry/geometry";
+
 export const DEFAULT_AUDIO_SAMPLERATE = 44100;
 
 export type NumArr = number[] | Float32Array | Float64Array;
@@ -116,6 +118,18 @@ export class SampleData implements SampleWithSamplerate {
     chunks(): number {
         return this.data.length;
     }
+
+    span(): Span1D {
+        return minmax(this);
+    }
+
+    toFloat32Array(output?: Float32Array): Float32Array {
+        const res = output ?? new Float32Array(this.length);
+        for (let i = 0; i < Math.min(this.length, res.length); i++) {
+            res[i] = this.get(i);
+        }
+        return res;
+    }
 }
 
 export class SampleSlice implements SampleWithSamplerate {
@@ -177,4 +191,47 @@ export class SampleView implements Sample {
     frames(): number {
         return this.length;
     }
+}
+
+export function minmax(data: NumArr | Sample): Span1D {
+    const view = new SampleView(data);
+    if (view.length === 0) {
+        return span1d(0, 0);
+    }
+    let min = view.get(0);
+    let max = min;
+    for (let idx = 1; idx < view.length; idx++) {
+        const value = view.get(idx);
+        min = Math.min(min, value);
+        max = Math.max(max, value);
+    }
+    return span1d(min, max);
+}
+
+export function maxIndex(data: NumArr | Sample): number {
+    const view = new SampleView(data);
+    let max = view.get(0);
+    let maxIndex = 0;
+    for (let idx = 1; idx < view.length; idx++) {
+        const value = view.get(idx);
+        if (value > max) {
+            max = value;
+            maxIndex = idx;
+        }
+    }
+    return maxIndex;
+}
+
+export function minIndex(data: NumArr | Sample): number {
+    const view = new SampleView(data);
+    let min = view.get(0);
+    let minIndex = 0;
+    for (let idx = 1; idx < view.length; idx++) {
+        const value = view.get(idx);
+        if (value < min) {
+            min = value;
+            minIndex = idx;
+        }
+    }
+    return minIndex;
 }

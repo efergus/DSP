@@ -60,7 +60,7 @@ export function polynomial_with_conjugate_roots(complex_roots: Complex[], real_r
 
 export function polynomial_with_roots(roots: Complex[]) {
     // (x - root1)*(x - root2)...
-    let parts = roots.map((x) => [complex(1), complex_mul_scalar(x, -1)]);
+    let parts = roots.map((root) => [complex(1), complex_mul_scalar(root, -1)]);
     let res = parts.reduce((acc, val) => {
         const res = mul_complex_polynomials(acc, val);
         return res;

@@ -80,6 +80,11 @@ export function complex_phase(val: Complex) {
     return Math.atan2(val.im, val.re);
 }
 
+export function complex_phase_2(val: Complex) {
+    const fullPhase = complex_phase(val);
+    return fullPhase < 0 ? fullPhase + Math.PI * 2 : fullPhase;
+}
+
 export function rad_to_degrees(rad: number) {
     return rad * 180 / Math.PI;
 }

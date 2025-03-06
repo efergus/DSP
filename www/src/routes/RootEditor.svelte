@@ -13,7 +13,7 @@
 	import NumberInput from '$lib/components/NumberInput.svelte';
 	import Circle from '$lib/icons/Circle.svelte';
 	import Trash from '$lib/icons/Trash.svelte';
-	import type { Root } from './PoleZeroEditor.svelte';
+	import type { Root } from '$lib/dsp/iir';
 
 	let name = uniqueId('root-');
 
@@ -134,6 +134,21 @@
 		>
 			<i>r</i>:
 		</NumberInput>
+		<input
+			type="range"
+			min="0"
+			max="4"
+			step="0.1"
+			value={-Math.log10(1 - radius)}
+			oninput={(event) => {
+				const val = event.currentTarget.valueAsNumber;
+				updateValuePolar(1 - 10 ** -val, angle);
+				// r = 1 - 10 ** -val
+				// r - 1 = -10**-val
+				// 1 - r = 10 ** -val
+				// log10(1-r) = -val
+			}}
+		/>
 		<!-- <RangeInput></RangeInput> -->
 		<NumberInput
 			horizontal={true}
@@ -144,7 +159,16 @@
 		>
 			<i>θ</i>:
 		</NumberInput>
-		<!-- <RangeInput></RangeInput> -->
+		<input
+			type="range"
+			min="0"
+			max="180"
+			step="1"
+			value={angle}
+			oninput={(event) => {
+				updateValuePolar(radius, event.currentTarget.valueAsNumber);
+			}}
+		/>
 	{:else}
 		<NumberInput
 			value={re}

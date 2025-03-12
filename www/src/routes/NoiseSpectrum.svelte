@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { IirDigital } from '$lib/audio/iir';
-	import { phaseNoise, whiteNoise } from '$lib/audio/signals';
 	import Spectrum from './Spectrum.svelte';
 	import Waveform from './OldWaveform.svelte';
+	import { phaseNoise } from '$lib/dsp/samples';
+	import type { IirDigital } from '$lib/dsp/iir';
 
 	const {
 		filter

@@ -5,7 +5,7 @@
 		type Sample,
 		type SampleData
 	} from '$lib/audio/sample';
-	import { span2d, type Point, type Span2D } from '$lib/geometry/geometry';
+	import { span2d, type Point, type Span2D } from '$lib/math/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
 

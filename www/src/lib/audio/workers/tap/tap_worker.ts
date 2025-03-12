@@ -1,4 +1,4 @@
-import { IirDigital } from "./iir";
+import { IirDigital } from "../../iir";
 
 export type AudioTapOptions = {
     silent?: boolean;
@@ -53,4 +53,4 @@ class AudioTap extends AudioWorkletProcessor {
     }
 }
 
-registerProcessor('audio-tap', AudioTap);
+registerProcessor('tap_worker', AudioTap);

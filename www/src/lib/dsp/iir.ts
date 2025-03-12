@@ -87,6 +87,14 @@ export class Iir {
         this._calculateCoefficients();
     }
 
+    rawCoefficients(): Float32Array {
+        const size = Math.max(this._forward.length, this._back.length);
+        const coefficients = new Float32Array(size * 2);
+        coefficients.set(this._forward);
+        coefficients.set(this._back, size);
+        return coefficients;
+    }
+
     // response(zValue: Complex): Complex {
     //     let numerator = complex(0);
     //     for (let i = 0; i < this._forward.length; i++) {

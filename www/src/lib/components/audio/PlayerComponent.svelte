@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { span2d, type Span2D } from '$lib/geometry/geometry';
+	import { span2d, type Span2D } from '$lib/math/geometry';
 	import type { MouseStateHandler } from '$lib/input/mouse';
 	import type { Snippet } from 'svelte';
 	import Axis from './Axis.svelte';

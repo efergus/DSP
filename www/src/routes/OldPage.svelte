@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { noiseProcessor } from '$lib/audio/processor';
+	// import { noiseProcessor } from '$lib/audio/processor';
 	import Circle from '$lib/icons/Circle.svelte';
 	import PauseCircle from '$lib/icons/PauseCircle.svelte';
 	import StopCircle from '$lib/icons/StopCircle.svelte';
@@ -33,8 +33,10 @@
 		single_pole_bandpass,
 		single_pole_bandstop
 	} from '$lib/audio/iir';
-	import PoleZeroEditor, { type Root } from './PoleZeroEditor.svelte';
+	import PoleZeroEditor from './PoleZeroEditor.svelte';
 	import NoiseSpectrum from './NoiseSpectrum.svelte';
+	import type { Root } from '$lib/dsp/iir';
+	import { audioTapInfo } from '$lib/audio/workers/tap/tap';
 
 	let width = 400;
 	let height = 200;
@@ -115,9 +117,9 @@
 		analyser.fftSize = BUF_SIZE;
 		source.connect(analyser);
 
-		await audio_context.audioWorklet.addModule(noiseProcessor.url);
+		await audio_context.audioWorklet.addModule(audioTapInfo.url);
 
-		let node = new AudioWorkletNode(audio_context, noiseProcessor.name, {
+		let node = new AudioWorkletNode(audio_context, audioTapInfo.name, {
 			processorOptions: { test: 'test' }
 		});
 		port = node.port;

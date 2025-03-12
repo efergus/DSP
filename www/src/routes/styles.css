@@ -2,6 +2,11 @@
     display: none;
 }
 
+.noselect {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
 button:hover,
 input:hover {
     background-color: rgba(0, 0, 0, 0.1);

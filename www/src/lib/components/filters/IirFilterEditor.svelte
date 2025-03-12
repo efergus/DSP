@@ -1,15 +1,24 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
 	import { filterRoots, IirDigital, single_pole_bandpass, type Root } from '$lib/dsp/iir';
-	import type { Span2D } from '$lib/geometry/geometry';
+	import type { Span2D } from '$lib/math/geometry';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import Waveform from '../audio/Waveform.svelte';
 	import FilterDetails from './FilterDetails.svelte';
 	import { throttle } from '$lib/input/debounce';
 	import { onMount } from 'svelte';
 	import { Player } from '$lib/audio/player';
+	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 
-	const { data, span = $bindable() }: { data: SampleData; span: Span2D } = $props();
+	const {
+		data,
+		span = $bindable()
+		// onFilterChange
+	}: {
+		data: SampleData;
+		span: Span2D;
+		// onFilterChange?: (filter: IirDigital) => void;
+	} = $props();
 
 	const whatever = 0.1;
 	const whatever2 = 0.1;
@@ -19,6 +28,19 @@
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
 	let filteredData = $state(new SampleData());
+	let filterChanged = $state(0);
+	let player: PlayerWithFilter = $state(
+		new PlayerWithFilter(undefined, {
+			callback: ({ remaining }) => {
+				if (!remaining) {
+					const now = Date.now();
+					if (now - filterChanged < 3000) {
+						setTimeout(() => player.play(data), 250);
+					}
+				}
+			}
+		})
+	);
 
 	const digital_filter = $derived.by(() => {
 		const baseFilter = IirDigital.from_roots(roots, 1);
@@ -32,6 +54,10 @@
 	// let roots = $derived(filterRoots(sample_digital_filter));
 	$effect(() => {
 		roots = filterRoots(sample_digital_filter);
+	});
+	$effect(() => {
+		player.setFilter(digital_filter);
+		filterChanged = Date.now();
 	});
 
 	const updateFilteredData = (sample: SampleData, filter: IirDigital) => {
@@ -74,8 +100,7 @@
 <div class="vrt">
 	<button
 		onclick={() => {
-			const player = new Player();
-			player.play(filteredData);
+			player.play(data);
 		}}
 	>
 		Play

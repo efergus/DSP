@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { maxIndex, SampleData, SampleView } from '$lib/audio/sample';
 	import type { IirDigital } from '$lib/dsp/iir';
-	import { span2d } from '$lib/geometry/geometry';
+	import { span2d } from '$lib/math/geometry';
 	import { throttle } from '$lib/input/debounce';
 	import Waveform from '../audio/Waveform.svelte';
 
@@ -22,7 +22,7 @@
 		response = new SampleView(rawResponse);
 		const peakIndex = maxIndex(response);
 		const peakFreq = filter.max_frequency_response_gradient_ascent(peakIndex / samples / 2);
-		console.log({ peakFreq, val: filter.frequency_response_norm(peakFreq) });
+		// console.log({ peakFreq, val: filter.frequency_response_norm(peakFreq) });
 
 		let rawPhaseResponse = new Float32Array(samples);
 		for (let idx = 0; idx < samples; idx++) {

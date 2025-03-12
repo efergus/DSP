@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { chirp_sample } from '$lib/dsp/samples';
-	import { span1d, type Span2D } from '$lib/geometry/geometry';
+	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
+	import { chirp_sample, phaseNoise, whiteNoise } from '$lib/dsp/samples';
+	import { span1d, type Span2D } from '$lib/math/geometry';
 	import AudioFileInput from './AudioFileInput.svelte';
 	import PlayerComponent from './PlayerComponent.svelte';
 	import Recorder from './Recorder.svelte';
@@ -25,7 +25,7 @@
 		bind:span={() => span,
 		(newSpan) => {
 			span = newSpan.copy();
-			span.x = newSpan.x.intersect(span1d(0, data.duration()));
+			span.x = newSpan.x.intersect(span1d(0, Math.max(data.duration(), 1)));
 		}}
 	>
 		<AudioFileInput
@@ -47,6 +47,18 @@
 				data = chirp_sample(20, 2000);
 				onData?.(data);
 			}}>Chirp</button
+		>
+		<button
+			onclick={() => {
+				data = whiteNoise(4 * DEFAULT_AUDIO_SAMPLERATE);
+				onData?.(data);
+			}}>Noise</button
+		>
+		<button
+			onclick={() => {
+				data = phaseNoise(4 * DEFAULT_AUDIO_SAMPLERATE);
+				onData?.(data);
+			}}>Random phase</button
 		>
 	</PlayerComponent>
 </div>

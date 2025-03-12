@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { complex, complex_conjugate, type Complex } from '$lib/dsp/complex';
-	import { span2d } from '$lib/geometry/geometry';
+	import { span2d } from '$lib/math/geometry';
 	import { mouse, type MouseState } from '$lib/input/mouse';
 
 	export type ComplexMouseState = {

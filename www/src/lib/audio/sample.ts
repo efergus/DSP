@@ -1,4 +1,4 @@
-import { span1d, type Span1D } from "$lib/geometry/geometry";
+import { span1d, type Span1D } from "$lib/math/geometry";
 
 export const DEFAULT_AUDIO_SAMPLERATE = 44100;
 

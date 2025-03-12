@@ -96,6 +96,14 @@ export class Iir {
     order(): number {
         return Math.max(this.zeros.length, this.poles.length);
     }
+
+    coefficientBuffer(): Float32Array {
+        const size = Math.max(this._forward.length, this._back.length);
+        const res = new Float32Array(size * 2);
+        res.set(this._forward);
+        res.set(this._back, size);
+        return res;
+    }
 }
 
 export type ApplyIirOptions = {

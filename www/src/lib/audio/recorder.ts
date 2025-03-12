@@ -1,5 +1,5 @@
-import { audioTapInfo } from "./processor";
 import { SampleData, SampleSlice, type Sample } from "./sample";
+import { audioTapInfo } from "./workers/tap/tap";
 
 
 export type RecorderCallbackData = {

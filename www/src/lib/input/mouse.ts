@@ -1,4 +1,4 @@
-import { point, type Point, type Span2D } from "$lib/geometry/geometry";
+import { point, type Point, type Span2D } from "$lib/math/geometry";
 
 export type SavedMouseState = {
     down: boolean,

@@ -98,59 +98,31 @@ export type AxisLine = {
     index: number
 }
 
-export function axisLines(span: Span1D, density = 2, scale = 1) {
-    const width = span.max - span.min;
-    const magnitude = Math.floor(Math.log10(width));
-    const majorSpacing = 10 ** magnitude;
-    const start = Math.floor(span.min / majorSpacing) * majorSpacing;
-
-    const lines: AxisLine[] = [];
-    for (let depth = 0; depth < density; depth++) {
-        const spacing = 10 ** (magnitude - depth);
-        const ticks = Math.ceil((span.max - start) / spacing) + 1;
-        for (let index = 0; index < ticks; index++) {
-            if (depth > 0 && index % 10 === 0) {
-                continue;
-            }
-            const value = start + spacing * index;
-            const pos = span.remap(value, span1d(0, scale));
-            lines.push({
-                label: value.toPrecision(2),
-                pos,
-                depth,
-                index
-            })
-        }
-    }
-    return lines;
-}
-
-export type AxisSpec = {
+export type AxisLayer = {
     index: number,
     count: number,
     magnitude: number,
     depth: number
 }
 
-export function axisSpecs(span: Span1D, density = 2) {
+function axisLayer(start: number, width: number, magnitude: number) {
+    const step = 10 ** magnitude;
+    const index = Math.floor(start / step);
+    const count = Math.ceil(width / step);
+    return {
+        index,
+        count
+    }
+}
+
+export function axisLayers(span: Span1D, density = 2) {
     const width = span.max - span.min;
     const widthLog = Math.log10(width);
-    const magnitude = Math.floor(widthLog);
-    const remainder = widthLog - magnitude;
-
-    const specs: AxisSpec[] = [];
-    for (let depth = 0; depth < density; depth++) {
-        const spacing = 10 ** (magnitude - depth);
-        const index = Math.floor(span.min / spacing);
-        const count = Math.ceil(span.max / spacing) - index;
-        specs.push({
-            index,
-            count,
-            magnitude: magnitude - depth,
-            depth: depth + remainder - magnitude
-        })
-    }
-    return specs;
+    const magnitude = Math.floor(widthLog - density);
+    const remainder = widthLog - magnitude - density;
+    const step = 10 ** magnitude;
+    const left = Math.floor(span.min / step);
+    const right = Math.ceil(span.max / step);
 }
 
 // export function axisSpec2(span: Span1D, density = 2) {
@@ -172,33 +144,13 @@ export function axisSpecs(span: Span1D, density = 2) {
 //     return specs;
 // }
 
-export function axisLines2(span: Span1D, density = 2, scale = 1) {
-    const specs = axisSpecs(span, density);
-
-    let lines: AxisLine[] = [];
-    for (const spec of specs) {
-        for (let offset = 0; offset < spec.count; offset++) {
-            const index = spec.index + offset;
-            if (spec.depth > 1 && index % 10 === 0) {
-                continue;
-            }
-            const value = index * (10 ** spec.magnitude);
-            const pos = span.remap(value, span1d(0, scale));
-            lines.push({
-                label: value.toPrecision(2),
-                pos,
-                depth: spec.depth,
-                index
-            })
-        }
-    }
-    return lines;
-}
-
 function divisorPower(value: number, base = 10, secondary = 5) {
+    if (value === 0) {
+        return Infinity;
+    }
     value = Math.abs(value);
     let power = 0;
-    while (value > base && (value % base === 0)) {
+    while (value >= base && (value % base === 0)) {
         value /= base;
         power++;
     }
@@ -208,7 +160,7 @@ function divisorPower(value: number, base = 10, secondary = 5) {
     return power;
 }
 
-export function axisLines3(span: Span1D, density = 2.5, scale = 1) {
+export function axisLines(span: Span1D, density = 2.5, scale = 1) {
     const width = span.max - span.min;
     const widthLog = Math.log10(width);
     const magnitude = Math.floor(widthLog - density + 0.6);
@@ -223,11 +175,16 @@ export function axisLines3(span: Span1D, density = 2.5, scale = 1) {
 
     let lines: AxisLine[] = [];
     for (let index = left; index <= right; index++) {
-        let depth = density + remainder - divisorPower(index);
+        let depth = 0;
+        let power = -magnitude;
+        if (index !== 0) {
+            power = divisorPower(index);
+            depth = density + remainder - power;
+        }
         const value = index * step;
         const pos = span.remap(value, span1d(0, scale));
         lines.push({
-            label: value.toPrecision(2),
+            label: value.toFixed(Math.max(-magnitude - Math.floor(power), 0)),
             depth: depth,
             pos,
             index
@@ -235,32 +192,3 @@ export function axisLines3(span: Span1D, density = 2.5, scale = 1) {
     }
     return lines;
 }
-
-
-// export function axisLines3(span: Span1D, density = 2, scale = 1) {
-//     const width = span.max - span.min;
-//     const widthLog = Math.log10(width);
-//     const magnitude = Math.floor(widthLog);
-//     const remainder = widthLog - magnitude;
-//     const step = 10 ** (magnitude - density + 1);
-//     const left = Math.floor(span.min / step);
-//     const right = Math.ceil(span.max / step);
-
-//     if (right >= Number.MAX_SAFE_INTEGER) {
-//         throw Error(`${right} too big`)
-//     }
-
-//     let lines: AxisLine[] = [];
-//     for (let index = left; index <= right; index++) {
-//         let depth = density + remainder - divisorPower(index, 10);
-//         const value = index * step;
-//         const pos = span.remap(value, span1d(0, scale));
-//         lines.push({
-//             label: value.toPrecision(2),
-//             depth: depth,
-//             pos,
-//             index
-//         })
-//     }
-//     return lines;
-// }

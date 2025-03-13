@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { SampleData, type Sample } from '$lib/audio/sample';
+	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
 	import { span2d, type Span2D } from '$lib/math/geometry';
 	import type { MouseStateHandler } from '$lib/input/mouse';
 	import type { Snippet } from 'svelte';
@@ -27,6 +27,9 @@
 			span={span.y}
 			vertical
 			onScale={(verticalSpan) => {
+				if (verticalSpan.size() < 1e-12) {
+					return;
+				}
 				span = span2d(span.x.min, span.x.max, verticalSpan.min, verticalSpan.max);
 			}}
 		/>
@@ -34,7 +37,6 @@
 			{data}
 			{span}
 			onMouse={(state) => {
-				// console.log(state.pos, state.pixelPos, state.delta);
 				if (state.down) {
 					span = span.move(-state.delta.x, -state.delta.y);
 				}
@@ -45,6 +47,9 @@
 			length={400}
 			span={span.x}
 			onScale={(horizontalSpan) => {
+				if (horizontalSpan.size() < 1 / DEFAULT_AUDIO_SAMPLERATE) {
+					return;
+				}
 				span = span2d(horizontalSpan.min, horizontalSpan.max, span.y.min, span.y.max);
 			}}
 		/>

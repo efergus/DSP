@@ -1,6 +1,6 @@
 
 export class Point {
-    constructor(public x: number = 0, public y: number = 0) {}
+    constructor(public x: number = 0, public y: number = 0) { }
 
     copy(): Point {
         return new Point(this.x, this.y);
@@ -8,7 +8,7 @@ export class Point {
 }
 
 export class Span1D {
-    constructor(public min: number = 0, public max: number = 1) {}
+    constructor(public min: number = 0, public max: number = 1) { }
 
     copy(): Span1D {
         return new Span1D(this.min, this.max);
@@ -43,13 +43,17 @@ export class Span1D {
     equals(span: Span1D): boolean {
         return this.min === span.min && this.max === span.max;
     }
+
+    size(): number {
+        return Math.abs(this.max - this.min);
+    }
 }
 
 export class Span2D {
     constructor(
         public x: Span1D = new Span1D(),
         public y: Span1D = new Span1D()
-    ) {}
+    ) { }
 
     static fromBounds(minX = 0, maxX = 1, minY = 0, maxY = 1): Span2D {
         return new Span2D(
@@ -70,10 +74,10 @@ export class Span2D {
     }
 
     scale(scale: number | Point, center?: Partial<Point>): Span2D {
-        const scale2d = typeof scale === "number" ? 
-            new Point(scale, scale) : 
+        const scale2d = typeof scale === "number" ?
+            new Point(scale, scale) :
             scale;
-        
+
         return new Span2D(
             this.x.scale(scale2d.x, center?.x),
             this.y.scale(scale2d.y, center?.y)
@@ -97,7 +101,7 @@ export class Span2D {
     intersect(span: Span2D): Span2D {
         return Span2D.intersect(this, span);
     }
-    
+
     equals(span: Span2D): boolean {
         return this.x.equals(span.x) && this.y.equals(span.y);
     }
@@ -115,7 +119,7 @@ export function span2d(
     minX = 0, maxX = 1,
     minY = 0, maxY = 1
 ): Span2D {
-    return Span2D.fromBounds(minX, maxX, minY, maxY); 
+    return Span2D.fromBounds(minX, maxX, minY, maxY);
 }
 
 export function span2dFromSpans(

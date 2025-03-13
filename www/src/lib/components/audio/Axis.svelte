@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { axisLines, axisLines2, axisLines3 } from '$lib/audio/draw';
+	import { axisLines } from '$lib/audio/draw';
 	import { span1d, span2d, type Span1D } from '$lib/math/geometry';
 	import { mouse } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
@@ -24,7 +24,7 @@
 
 	let mousePos = $state(0);
 
-	const lineLocations = $derived(axisLines3(span, density, length));
+	const lineLocations = $derived(axisLines(span, density, length));
 	const lines = $derived(
 		lineLocations.map((line) => {
 			// const center = line.index % 5 === 0 && line.index % 2 !== 0;
@@ -34,7 +34,7 @@
 			return {
 				...line,
 				color: `rgb(${intensity} ${intensity} ${intensity})`,
-				width: (width * 0.8 * 1.5) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
+				width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
 				pos: line.pos,
 				depth: effectiveDepth
 			};
@@ -63,10 +63,6 @@
 		let apxDeltaPixels = -event.deltaY * 10 ** event.deltaMode;
 		const factor = Math.exp(-apxDeltaPixels / 100);
 		let newSpan = span.scale(factor, mousePos);
-		// if (limits) {
-		// 	newSpan = span.inter;
-		// }
-		console.log(span, factor, newSpan);
 		onScale?.(newSpan);
 	}}
 >
@@ -99,13 +95,8 @@
 		</g>
 		<g>
 			{#each lines as line}
-				{#if line.depth <= 1.3}
-					<text
-						x={line.pos + 2}
-						y={width - 2}
-						class="noselect"
-						opacity={1 - (line.depth / 1.3) ** 2}
-					>
+				{#if line.depth <= 1}
+					<text x={line.pos + 2} y={width - 2} class="noselect" opacity={1 - line.depth ** 2}>
 						{line.label}
 					</text>
 				{/if}

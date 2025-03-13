@@ -8,6 +8,7 @@
 	import { span2d, type Point, type Span2D } from '$lib/math/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
+	import { axisLines } from '$lib/audio/draw';
 
 	let {
 		data,
@@ -33,9 +34,16 @@
 
 	let canvas: HTMLCanvasElement;
 
+	const horizontalAxis = $derived(axisLines(span.x, 1.4, width));
+	const verticalAxis = $derived(axisLines(span.y, 1.4, height));
+
 	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
 		context.fillStyle = 'rgb(200 200 200)';
 		context.fillRect(0, 0, width, height);
+
+		context.beginPath();
+		context.strokeStyle;
+
 		context.beginPath();
 		context.strokeStyle = 'black';
 		context.lineWidth = strokeWidth;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { axisLines } from '$lib/audio/draw';
+	import { axisLines, axisLines2 } from '$lib/audio/draw';
 	import { span1d, span2d, type Span1D } from '$lib/math/geometry';
 	import { mouse } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
@@ -24,25 +24,27 @@
 
 	let mousePos = $state(0);
 
-	const lineLocations = $derived(axisLines(span, density, length));
+	const lineLocations = $derived(axisLines(span, density));
 	const lines = $derived(
-		lineLocations.map((line) => {
-			// const center = line.index % 5 === 0 && line.index % 2 !== 0;
-			// const effectiveDepth = Math.max(line.depth + (center ? 0 : clamp(2 - line.depth) * 0.5), 0);
-			const effectiveDepth = Math.max(line.depth, 0);
-			const intensity = Math.max((255 * effectiveDepth) / density, 0);
-			return {
-				...line,
-				color: `rgb(${intensity} ${intensity} ${intensity})`,
-				width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
-				pos: line.pos,
-				depth: effectiveDepth
-			};
-		})
+		Array.from(
+			lineLocations.map((line) => {
+				// const center = line.index % 5 === 0 && line.index % 2 !== 0;
+				// const effectiveDepth = Math.max(line.depth + (center ? 0 : clamp(2 - line.depth) * 0.5), 0);
+				const effectiveDepth = Math.max(line.depth, 0);
+				const intensity = Math.max((255 * effectiveDepth) / density, 0);
+				return {
+					...line,
+					color: `rgb(${intensity} ${intensity} ${intensity})`,
+					width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
+					pos: line.pos * length,
+					depth: effectiveDepth
+				};
+			})
+		)
 	);
 	const viewBox = $derived(vertical ? `0 0 ${width} ${length}` : `0 0 ${length} ${width}`);
 
-	// $inspect(span, lineLocations);
+	$inspect(span, lineLocations);
 	// $inspect(span);
 </script>
 
@@ -96,7 +98,7 @@
 		<g>
 			{#each lines as line}
 				{#if line.depth <= 1}
-					<text x={line.pos + 2} y={width - 2} class="noselect" opacity={1 - line.depth ** 2}>
+					<text x={line.pos + 2} y={width - 2} class="noselect" opacity={1 - line.depth ** 4}>
 						{line.label}
 					</text>
 				{/if}

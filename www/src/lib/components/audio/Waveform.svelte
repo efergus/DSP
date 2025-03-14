@@ -34,15 +34,24 @@
 
 	let canvas: HTMLCanvasElement;
 
-	const horizontalAxis = $derived(axisLines(span.x, 1.4, width));
-	const verticalAxis = $derived(axisLines(span.y, 1.4, height));
+	const horizontalAxis = $derived(Array.from(axisLines(span.x, 1, width)));
+	const verticalAxis = $derived(Array.from(axisLines(span.y, 1, height)));
 
 	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
 		context.fillStyle = 'rgb(200 200 200)';
 		context.fillRect(0, 0, width, height);
 
 		context.beginPath();
-		context.strokeStyle;
+		context.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+		for (const line of horizontalAxis) {
+			context.moveTo(line.pos, 0);
+			context.lineTo(line.pos, height);
+		}
+		for (const line of verticalAxis) {
+			context.moveTo(0, height - line.pos);
+			context.lineTo(width, height - line.pos);
+		}
+		context.stroke();
 
 		context.beginPath();
 		context.strokeStyle = 'black';

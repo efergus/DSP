@@ -1,5 +1,7 @@
 import { span1d, type Span1D } from "$lib/math/geometry";
 
+export type AxisScale = "linear" | "log";
+
 export type DrawWaveformOptions = {
     offset?: number;
     limit?: number;
@@ -99,52 +101,100 @@ export type AxisLine = {
 }
 
 export type AxisLayer = {
-    index: number,
-    count: number,
     magnitude: number,
-    depth: number
+    depth: number,
+    start: number,
+    index: number,
+    base: number,
 }
 
-function axisLayer(start: number, width: number, magnitude: number) {
-    const step = 10 ** magnitude;
-    const index = Math.floor(start / step);
-    const count = Math.ceil(width / step);
+export function axisLayer(span: Span1D, base = 10): AxisLayer {
+    const width = span.size();
+    const widthLog = Math.log(width) / Math.log(base);
+    const magnitude = Math.floor(widthLog);
+    const depth = widthLog - magnitude;
+    const step = base ** magnitude;
+    const index = Math.floor(span.min / step);
+    const start = (index * step - span.min) / width;
     return {
+        magnitude,
+        depth,
+        start,
         index,
-        count
+        base
     }
 }
 
-export function axisLayers(span: Span1D, density = 2) {
-    const width = span.max - span.min;
-    const widthLog = Math.log10(width);
-    const magnitude = Math.floor(widthLog - density);
-    const remainder = widthLog - magnitude - density;
-    const step = 10 ** magnitude;
-    const left = Math.floor(span.min / step);
-    const right = Math.ceil(span.max / step);
+export function axisStart(start: number, depth: number, base = 10) {
+    const size = base ** depth;
+    return Math.floor(-start * size) / size;
 }
 
-// export function axisSpec2(span: Span1D, density = 2) {
-//     const width = span.max - span.min;
-//     const widthLog = Math.log10(width);
-//     const magnitude = Math.floor(widthLog);
-//     const remainder = widthLog - magnitude;
+function divisorPower(value: number, base = 10) {
+    if (value === 0) {
+        return { rem: 0, power: Infinity };
+    }
+    value = Math.abs(value);
+    let power = 0;
+    while (value >= base && (value % base === 0)) {
+        value /= base;
+        power++;
+    }
+    return {
+        rem: value,
+        power
+    };
+}
 
-//     const specs: AxisSpec[] = [];
-//     for (let depth = 0; depth < magnitude + density; depth++) {
-//         const spacing = 10 ** (magnitude - depth);
-//         const index = Math.floor(span.min / spacing);
-//         specs.push({
-//             index,
-//             magnitude: magnitude - depth,
-//             depth: depth + remainder - magnitude
-//         })
-//     }
-//     return specs;
-// }
+function axisLabel(index: number, magnitude: number, base = 10) {
+    const { power, rem } = divisorPower(index);
+    if (magnitude > 0) {
+        return {
+            label: index.toString(base),
+            depth: -magnitude - power
+        }
+    }
+    const remainingPower = -magnitude - power;
+    const string = rem.toString(base);
+    let whole = string.slice(0, string.length - remainingPower);
+    let frac = string.slice(string.length - remainingPower, string.length);
+    whole = whole.length > 0 ? whole : '0';
+    frac = frac.length > 0 ? frac : '0';
+    const sign = index < 0 ? '-' : '';
+    return {
+        label: `${sign}${whole}.${frac}`,
+        depth: -magnitude - power
+    };
+}
 
-function divisorPower(value: number, base = 10, secondary = 5) {
+export function axisLinesFromLayerAtDepth(layer: AxisLayer, depth: number) {
+    const totalDepth = depth + layer.depth;
+    const span = layer.base ** totalDepth;
+    const count = Math.ceil(span);
+    let lines: AxisLine[] = [];
+    for (let index = Math.floor(-layer.start * span); index <= count; index++) {
+        if (depth > 0 && index % layer.base === 0) {
+            continue;
+        }
+        const { label, depth: labelDepth } = axisLabel(index + layer.index * layer.base ** depth, layer.magnitude - depth, layer.base)
+        lines.push({
+            label,
+            depth: labelDepth + layer.depth,
+            pos: layer.start + index / span,
+            index
+        })
+    }
+    return lines;
+}
+
+export function* axisLines2(span: Span1D, density = 2.3) {
+    const layer = axisLayer(span);
+    for (let depth = 0; depth + layer.depth < density; depth++) {
+        yield axisLinesFromLayerAtDepth(layer, depth);
+    }
+}
+
+function divisorPowerWithSecondary(value: number, base = 10, secondary = 5, secondaryValue = 0.3) {
     if (value === 0) {
         return Infinity;
     }
@@ -160,7 +210,7 @@ function divisorPower(value: number, base = 10, secondary = 5) {
     return power;
 }
 
-export function axisLines(span: Span1D, density = 2.5, scale = 1) {
+export function* axisLines(span: Span1D, density = 2.5, scale = 1) {
     const width = span.max - span.min;
     const widthLog = Math.log10(width);
     const magnitude = Math.floor(widthLog - density + 0.6);
@@ -173,22 +223,20 @@ export function axisLines(span: Span1D, density = 2.5, scale = 1) {
         throw Error(`${right} too big`)
     }
 
-    let lines: AxisLine[] = [];
     for (let index = left; index <= right; index++) {
         let depth = 0;
         let power = -magnitude;
         if (index !== 0) {
-            power = divisorPower(index);
+            power = divisorPowerWithSecondary(index);
             depth = density + remainder - power;
         }
         const value = index * step;
         const pos = span.remap(value, span1d(0, scale));
-        lines.push({
+        yield {
             label: value.toFixed(Math.max(-magnitude - Math.floor(power), 0)),
             depth: depth,
             pos,
             index
-        })
+        }
     }
-    return lines;
 }

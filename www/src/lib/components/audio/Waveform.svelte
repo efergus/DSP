@@ -8,7 +8,7 @@
 	import { span2d, type Point, type Span2D } from '$lib/math/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
-	import { axisLines } from '$lib/audio/draw';
+	import { axisLines, axisLines2 } from '$lib/audio/draw';
 
 	let {
 		data,
@@ -34,22 +34,24 @@
 
 	let canvas: HTMLCanvasElement;
 
-	const horizontalAxis = $derived(Array.from(axisLines(span.x, 1, width)));
-	const verticalAxis = $derived(Array.from(axisLines(span.y, 1, height)));
+	const horizontalAxis = $derived(Array.from(axisLines2(span.x, 1.4)));
+	const verticalAxis = $derived(Array.from(axisLines2(span.y, 1.4)));
+	$inspect({ horizontalAxis });
 
 	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
 		context.fillStyle = 'rgb(200 200 200)';
 		context.fillRect(0, 0, width, height);
 
 		context.beginPath();
+		context.lineWidth = 1;
 		context.strokeStyle = 'rgba(0, 0, 0, 0.5)';
 		for (const line of horizontalAxis) {
-			context.moveTo(line.pos, 0);
-			context.lineTo(line.pos, height);
+			context.moveTo(line.pos * width, 0);
+			context.lineTo(line.pos * width, height);
 		}
 		for (const line of verticalAxis) {
-			context.moveTo(0, height - line.pos);
-			context.lineTo(width, height - line.pos);
+			context.moveTo(0, height - line.pos * height);
+			context.lineTo(width, height - line.pos * height);
 		}
 		context.stroke();
 

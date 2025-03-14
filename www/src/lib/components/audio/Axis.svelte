@@ -24,27 +24,25 @@
 
 	let mousePos = $state(0);
 
-	const lineLocations = $derived(axisLines(span, density));
+	const lineLocations = $derived(Array.from(axisLines2(span, density)));
 	const lines = $derived(
-		Array.from(
-			lineLocations.map((line) => {
-				// const center = line.index % 5 === 0 && line.index % 2 !== 0;
-				// const effectiveDepth = Math.max(line.depth + (center ? 0 : clamp(2 - line.depth) * 0.5), 0);
-				const effectiveDepth = Math.max(line.depth, 0);
-				const intensity = Math.max((255 * effectiveDepth) / density, 0);
-				return {
-					...line,
-					color: `rgb(${intensity} ${intensity} ${intensity})`,
-					width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
-					pos: line.pos * length,
-					depth: effectiveDepth
-				};
-			})
-		)
+		lineLocations.map((line) => {
+			// const center = line.index % 5 === 0 && line.index % 2 !== 0;
+			// const effectiveDepth = Math.max(line.depth + (center ? 0 : clamp(2 - line.depth) * 0.5), 0);
+			const effectiveDepth = Math.max(line.depth, 0);
+			const intensity = Math.max((255 * effectiveDepth) / density, 0);
+			return {
+				...line,
+				color: `rgb(${intensity} ${intensity} ${intensity})`,
+				width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
+				pos: line.pos * length,
+				depth: effectiveDepth
+			};
+		})
 	);
 	const viewBox = $derived(vertical ? `0 0 ${width} ${length}` : `0 0 ${length} ${width}`);
 
-	$inspect(span, lineLocations);
+	// $inspect(span, lineLocations);
 	// $inspect(span);
 </script>
 
@@ -83,7 +81,7 @@
 		<g dominant-baseline="hanging">
 			{#each lines as line}
 				{#if line.depth <= 1}
-					<text x="0" y={length - line.pos + 2}>
+					<text x="0" y={length - line.pos + 2} class="noselect" opacity={1 - line.depth ** 4}>
 						{line.label}
 					</text>
 				{/if}

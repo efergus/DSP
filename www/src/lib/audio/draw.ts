@@ -100,31 +100,6 @@ export type AxisLine = {
     index: number
 }
 
-export type AxisLayer = {
-    magnitude: number,
-    depth: number,
-    start: number,
-    index: number,
-    base: number,
-}
-
-export function axisLayer(span: Span1D, base = 10): AxisLayer {
-    const width = span.size();
-    const widthLog = Math.log(width) / Math.log(base);
-    const magnitude = Math.floor(widthLog);
-    const depth = widthLog - magnitude;
-    const step = base ** magnitude;
-    const index = Math.floor(span.min / step);
-    const start = (index * step - span.min) / width;
-    return {
-        magnitude,
-        depth,
-        start,
-        index,
-        base
-    }
-}
-
 export function axisStart(start: number, depth: number, base = 10) {
     const size = base ** depth;
     return Math.floor(-start * size) / size;
@@ -148,49 +123,60 @@ function divisorPower(value: number, base = 10) {
 
 function axisLabel(index: number, magnitude: number, base = 10) {
     const { power, rem } = divisorPower(index);
-    if (magnitude > 0) {
-        return {
-            label: index.toString(base),
-            depth: -magnitude - power
-        }
-    }
     const remainingPower = -magnitude - power;
+    if (magnitude > 0) {
+        return index.toString(base);
+    }
+    if (remainingPower <= 0) {
+        return rem.toString(base);
+    }
     const string = rem.toString(base);
     let whole = string.slice(0, string.length - remainingPower);
     let frac = string.slice(string.length - remainingPower, string.length);
     whole = whole.length > 0 ? whole : '0';
     frac = frac.length > 0 ? frac : '0';
     const sign = index < 0 ? '-' : '';
-    return {
-        label: `${sign}${whole}.${frac}`,
-        depth: -magnitude - power
-    };
-}
-
-export function axisLinesFromLayerAtDepth(layer: AxisLayer, depth: number) {
-    const totalDepth = depth + layer.depth;
-    const span = layer.base ** totalDepth;
-    const count = Math.ceil(span);
-    let lines: AxisLine[] = [];
-    for (let index = Math.floor(-layer.start * span); index <= count; index++) {
-        if (depth > 0 && index % layer.base === 0) {
-            continue;
-        }
-        const { label, depth: labelDepth } = axisLabel(index + layer.index * layer.base ** depth, layer.magnitude - depth, layer.base)
-        lines.push({
-            label,
-            depth: labelDepth + layer.depth,
-            pos: layer.start + index / span,
-            index
-        })
-    }
-    return lines;
+    return `${sign}${whole}.${frac}`;
 }
 
 export function* axisLines2(span: Span1D, density = 2.3) {
-    const layer = axisLayer(span);
-    for (let depth = 0; depth + layer.depth < density; depth++) {
-        yield axisLinesFromLayerAtDepth(layer, depth);
+    const base = 10;
+    const secondary = 5;
+    const width = span.size();
+    const widthLog = Math.log(width) / Math.log(base);
+    const magnitude = Math.floor(widthLog);
+    const remainder = widthLog - magnitude;
+
+    for (let depth = Math.ceil(density + remainder); depth >= 0; depth--) {
+        const step = 10 ** (magnitude - depth);
+        const start = Math.floor(span.min / step);
+        const end = Math.ceil(span.max / step);
+        for (let index = start; index <= end; index++) {
+            let adjustment = 0.0;
+            if (depth > 0) {
+                if (index % base === 0) {
+                    continue;
+                }
+            }
+            else if (index % base === 0) {
+                adjustment -= 1;
+            }
+            if (secondary && index % secondary === 0) {
+                adjustment -= 0.3;
+            }
+            const result = Math.max(depth + remainder + adjustment, 0);
+            if (result > density) {
+                continue;
+            }
+
+            const value = index * step;
+            yield {
+                label: axisLabel(index, magnitude - depth, base),
+                depth: result,
+                pos: (value - span.min) / width,
+                index
+            }
+        }
     }
 }
 

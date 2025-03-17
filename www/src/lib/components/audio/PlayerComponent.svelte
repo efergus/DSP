@@ -6,6 +6,7 @@
 	import Axis from './Axis.svelte';
 	import Waveform from './Waveform.svelte';
 	import { Player } from '$lib/audio/player';
+	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 
 	let {
 		data,
@@ -41,6 +42,7 @@
 					span = span.move(-state.delta.x, -state.delta.y);
 				}
 			}}
+			stairstep
 		/>
 		<div></div>
 		<Axis
@@ -58,7 +60,7 @@
 		{@render children?.()}
 		<button
 			onclick={() => {
-				const player = new Player();
+				const player = new PlayerWithFilter();
 				player.play(new SampleData(data));
 			}}
 		>

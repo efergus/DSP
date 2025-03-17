@@ -1,6 +1,9 @@
 import { span1d, type Span1D } from "$lib/math/geometry";
 
-export type AxisScale = "linear" | "log";
+export enum AxisScale {
+    Linear = 'linear',
+    Log = 'log'
+};
 
 export type DrawWaveformOptions = {
     offset?: number;
@@ -93,12 +96,80 @@ export function draw_waveform(context: CanvasRenderingContext2D, values: Float32
     }
 }
 
-export type AxisLine = {
-    label: string,
-    pos: number,
+export type AxisLayer = {
     depth: number,
-    index: number
+    weight: number,
+    values: Iterable<number>,
+    format: (value: number) => string
 }
+
+export type DetailedAxisLayer = AxisLayer & {
+    magnitude: number,
+    zoom: number,
+    spacing: number,
+    start: number,
+    skip: number
+}
+
+function* rangeWithSkip(start: number, end: number, skip: number) {
+    for (let index = start; index < end; index++) {
+        if (skip && (index % skip === 0)) {
+            continue;
+        }
+        yield index;
+    }
+}
+
+// function axisLevel(span: Span1D, )
+
+function* axisLineHelper(startIndex: number, endIndex: number, offset: number, scale: number, skip: number) {
+    for (const index of rangeWithSkip(startIndex, endIndex, skip)) {
+        yield offset + index / scale;
+    }
+}
+
+function formatLabel(magnitude: number) {
+    const precision = -Math.min(magnitude, 0);
+    return (value: number) => value.toFixed(precision);
+}
+
+export function* axisLines3(span: Span1D, maxDepth: number = 1.4): Generator<DetailedAxisLayer> {
+    const width = span.size();
+    const widthLog = Math.log10(width);
+    const magnitude = Math.ceil(widthLog);
+    const startDepth = widthLog - magnitude;
+    let zoom = 1;
+    let skip = 0;
+    const scalingFactors = [2, 5];
+    let scalingFactorIndex = 0;
+    let depth = 0;
+    while (depth < maxDepth) {
+        const effectiveZoom = magnitude > 0 ? zoom / 10 ** magnitude : zoom * 10 ** (-magnitude);
+        const startIndex = Math.floor(span.min * effectiveZoom);
+        const endIndex = Math.ceil(span.max * effectiveZoom);
+        const start = startIndex / effectiveZoom;
+        const effectiveMagnitude = -Math.ceil(Math.log10(effectiveZoom));
+        // yield each layer at a given depth
+        yield {
+            depth,
+            weight: 1 - (depth / maxDepth),
+            magnitude: effectiveMagnitude,
+            zoom: effectiveZoom,
+            spacing: 1 / effectiveZoom,
+            start,
+            skip,
+            values: axisLineHelper(startIndex, endIndex, 0, effectiveZoom, skip),
+            format: formatLabel(effectiveMagnitude)
+        }
+
+        zoom *= scalingFactors[scalingFactorIndex];
+        skip = scalingFactors[scalingFactorIndex];
+        scalingFactorIndex = (scalingFactorIndex + 1) % scalingFactors.length
+        depth = Math.max(startDepth + Math.log10(zoom), 0);
+    }
+}
+
+
 
 export function axisStart(start: number, depth: number, base = 10) {
     const size = base ** depth;
@@ -225,4 +296,48 @@ export function* axisLines(span: Span1D, density = 2.5, scale = 1) {
             index
         }
     }
+}
+
+export function* axisLinesLog(span: Span1D, maxDepth: number = 1): Generator<AxisLayer> {
+    const minLog = Math.floor(Math.log10(span.min));
+    const maxLog = Math.ceil(Math.log10(span.max));
+
+    // Major lines (powers of 10)
+    const majorValues: number[] = [];
+    for (let exp = minLog; exp <= maxLog; exp++) {
+        const value = Math.pow(10, exp);
+        if (value >= span.min && value <= span.max) {
+            majorValues.push(value);
+        }
+    }
+    
+    yield {
+        depth: 0,
+        weight: 1,
+        values: majorValues,
+        format: (value: number) => value.toExponential(0)
+    };
+
+    if (maxDepth < 1) {
+        return;
+    }
+
+    // Minor lines in between powers of 10
+    const minorValues: number[] = [];
+    for (let exp = minLog; exp <= maxLog; exp++) {
+        const baseValue = Math.pow(10, exp);
+        for (let i = 2; i < 10; i++) {
+            const value = i * baseValue;
+            if (value >= span.min && value <= span.max) {
+                minorValues.push(value);
+            }
+        }
+    }
+
+    yield {
+        depth: 1,
+        weight: 0.1,
+        values: minorValues,
+        format: (value: number) => value.toExponential(1)
+    };
 }

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { axisLines, axisLines2 } from '$lib/audio/draw';
+	import { axisLines, axisLines2, axisLines3 } from '$lib/audio/draw';
 	import { span1d, span2d, type Span1D } from '$lib/math/geometry';
 	import { mouse } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
@@ -24,26 +24,35 @@
 
 	let mousePos = $state(0);
 
-	const lineLocations = $derived(Array.from(axisLines2(span, density)));
+	const screenSpan = $derived(span1d(0, length));
+	const lineLocations = $derived(
+		Array.from(axisLines3(span, density)).map((spec) => ({
+			depth: spec.depth,
+			magnitude: spec.magnitude,
+			format: spec.format,
+			values: Array.from(spec.values)
+		}))
+	);
 	const lines = $derived(
-		lineLocations.map((line) => {
-			// const center = line.index % 5 === 0 && line.index % 2 !== 0;
-			// const effectiveDepth = Math.max(line.depth + (center ? 0 : clamp(2 - line.depth) * 0.5), 0);
-			const effectiveDepth = Math.max(line.depth, 0);
-			const intensity = Math.max((255 * effectiveDepth) / density, 0);
-			return {
-				...line,
-				color: `rgb(${intensity} ${intensity} ${intensity})`,
-				width: (width * 0.8) / Math.max((effectiveDepth - 0.2) * 2, 0.5),
-				pos: line.pos * length,
-				depth: effectiveDepth
-			};
+		lineLocations.flatMap((group) => {
+			const intensity = Math.max((255 * group.depth) / density, 0);
+			const color = `rgb(${intensity} ${intensity} ${intensity})`;
+			const length = (width * 0.8) / Math.max((group.depth - 0.2) * 2, 0.5);
+			return group.values.map((value) => ({
+				color,
+				length,
+				depth: group.depth,
+				value,
+				pos: span.remap(value, screenSpan),
+				format: group.format
+			}));
 		})
 	);
 	const viewBox = $derived(vertical ? `0 0 ${width} ${length}` : `0 0 ${length} ${width}`);
 
-	// $inspect(span, lineLocations);
-	// $inspect(span);
+	if (!vertical) {
+		$inspect({ span, lines, lineLocations });
+	}
 </script>
 
 <svg
@@ -71,7 +80,7 @@
 			{#each lines as line}
 				<line
 					stroke={line.color}
-					x1={width - line.width}
+					x1={width - line.length}
 					x2={width}
 					y1={length - line.pos}
 					y2={length - line.pos}
@@ -82,7 +91,7 @@
 			{#each lines as line}
 				{#if line.depth <= 1}
 					<text x="0" y={length - line.pos + 2} class="noselect" opacity={1 - line.depth ** 4}>
-						{line.label}
+						{line.format(line.value)}
 					</text>
 				{/if}
 			{/each}
@@ -90,14 +99,14 @@
 	{:else}
 		<g>
 			{#each lines as line}
-				<line stroke={line.color} x1={line.pos} x2={line.pos} y1="0" y2={line.width}></line>
+				<line stroke={line.color} x1={line.pos} x2={line.pos} y1="0" y2={line.length}></line>
 			{/each}
 		</g>
 		<g>
 			{#each lines as line}
 				{#if line.depth <= 1}
 					<text x={line.pos + 2} y={width - 2} class="noselect" opacity={1 - line.depth ** 4}>
-						{line.label}
+						{line.format(line.value)}
 					</text>
 				{/if}
 			{/each}

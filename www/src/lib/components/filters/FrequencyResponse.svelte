@@ -1,15 +1,16 @@
 <script lang="ts">
-	import { maxIndex, SampleData, SampleView } from '$lib/audio/sample';
+	import { maxIndex, SampleView } from '$lib/audio/sample';
 	import type { IirDigital } from '$lib/dsp/iir';
 	import { span2d } from '$lib/math/geometry';
 	import { throttle } from '$lib/input/debounce';
 	import Waveform from '../audio/Waveform.svelte';
 
-	const { filter }: { filter: IirDigital } = $props();
+	const { filter, decibels }: { filter: IirDigital; decibels?: boolean } = $props();
 	// let canvas: HTMLCanvasElement = $state();
 
 	const samples = 128;
 	// let impulse = $state(new Float32Array(samples));
+	const frequencySpan = $derived(decibels ? span2d(0, 1, -50, 10) : span2d(0, 1, 0, 1));
 	let response = $state(new SampleView(new Float32Array(0)));
 	let phaseResponse = $state(new SampleView(new Float32Array(0)));
 
@@ -17,7 +18,8 @@
 		// filteredImpulse = new SampleData(filter.apply(impulse));
 		let rawResponse = new Float32Array(samples);
 		for (let idx = 0; idx < samples; idx++) {
-			rawResponse[idx] = filter.frequency_response_norm(idx / samples / 2);
+			const response = filter.frequency_response_norm(idx / samples / 2);
+			rawResponse[idx] = decibels ? Math.log10(response) * 10 : response;
 		}
 		response = new SampleView(rawResponse);
 		const peakIndex = maxIndex(response);
@@ -39,7 +41,7 @@
 </script>
 
 <div>
-	<Waveform data={response} span={span2d(0, 1, 0, 1.1)} samplerate={samples} />
+	<Waveform data={response} span={frequencySpan} samplerate={samples} />
 	<Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} />
 	<!-- <button
 		onclick={() => {

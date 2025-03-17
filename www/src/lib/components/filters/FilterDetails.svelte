@@ -8,7 +8,7 @@
 
 <div>
 	<TimeResponse {filter} />
-	<FrequencyResponse {filter} />
+	<FrequencyResponse {filter} decibels />
 </div>
 
 <style lang="less">

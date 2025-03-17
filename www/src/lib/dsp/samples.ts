@@ -46,7 +46,41 @@ export function whiteNoise(samples = 128, iters = 8) {
         }
         data[idx] /= iters;
     }
-    return new SampleData(data);
+    return data;
+}
+
+export function whiteNoiseSample(samples = 128, iters = 8) {
+    return new SampleData(whiteNoise(samples, iters));
+}
+
+export function pinkNoise(samples = 128, power = 0.5) {
+    const data = whiteNoise(samples);
+
+    let fft_context = context();
+    const spectrum = fft_context.fft(data);
+
+    for (let idx = 2; idx < samples; idx += 2) {
+        const frequency = idx / samples;
+        const gain = 1 / Math.pow(frequency, power);
+        spectrum[idx] *= gain;
+        spectrum[idx + 1] *= gain;
+    }
+
+    const res = fft_context.fft_inverse(spectrum);
+
+    let attenuation = 1;
+    for (let idx = 0; idx < samples; idx++) {
+        attenuation = Math.max(attenuation, Math.abs(res[idx]));
+    }
+    for (let idx = 0; idx < samples; idx++) {
+        res[idx] /= attenuation;
+    }
+
+    return res;
+}
+
+export function pinkNoiseSample(samples = 128, power = 0.5) {
+    return new SampleData(pinkNoise(samples, power));
 }
 
 // TODO handle odd numbers of samples
@@ -63,4 +97,13 @@ export function phaseNoise(samples = 128) {
     }
 
     return new SampleData(fft_context.fft_inverse(spectrum));
+}
+
+export function sinSample(freq = 440, samplerate = 44100, length?: number) {
+    length = length ?? samplerate * 4;
+    let res = new Float32Array(length);
+    for (let i = 0; i < length; i++) {
+        res[i] = Math.sin(2 * Math.PI * freq * i / samplerate);
+    }
+    return new SampleData(res, samplerate);
 }

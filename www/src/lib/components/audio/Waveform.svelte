@@ -5,10 +5,10 @@
 		type Sample,
 		type SampleData
 	} from '$lib/audio/sample';
-	import { span2d, type Point, type Span2D } from '$lib/math/geometry';
+	import { span1d, span2d, type Point, type Span2D } from '$lib/math/geometry';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
-	import { axisLines, axisLines2 } from '$lib/audio/draw';
+	import { axisLines, axisLines2, axisLines3, axisLinesLog, AxisScale } from '$lib/audio/draw';
 
 	let {
 		data,
@@ -16,8 +16,10 @@
 		width = 400,
 		height = 200,
 		cursor = 0,
-		strokeWidth = 2,
+		strokeWidth = 1,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
+		scale = AxisScale.Linear,
+		stairstep = false,
 		onWheel = () => {},
 		onMouse = () => {}
 	}: {
@@ -28,30 +30,52 @@
 		height?: number;
 		cursor?: number;
 		strokeWidth?: number;
+		scale?: AxisScale;
+		stairstep?: boolean;
 		onWheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
 		onMouse?: MouseStateHandler;
 	} = $props();
 
 	let canvas: HTMLCanvasElement;
 
-	const horizontalAxis = $derived(Array.from(axisLines2(span.x, 1.4)));
-	const verticalAxis = $derived(Array.from(axisLines2(span.y, 1.4)));
-	$inspect({ horizontalAxis });
+	const logScale = $derived(scale === AxisScale.Log && span.y.min > 0);
+	const screenSpan = $derived(span2d(0, width, 0, height));
+	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
+	const screenMapY = $derived(
+		logScale
+			? (value: number) =>
+					height -
+					span1d(Math.log(span.y.min), Math.log(span.y.max)).remap(Math.log(value), screenSpan.y)
+			: (value: number) => height - span.y.remap(value, screenSpan.y)
+	);
 
 	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
-		context.fillStyle = 'rgb(200 200 200)';
+		context.fillStyle = 'rgb(255 255 255)';
 		context.fillRect(0, 0, width, height);
 
-		context.beginPath();
 		context.lineWidth = 1;
-		context.strokeStyle = 'rgba(0, 0, 0, 0.5)';
-		for (const line of horizontalAxis) {
-			context.moveTo(line.pos * width, 0);
-			context.lineTo(line.pos * width, height);
+		const horizontalAxis = axisLines3(span.x, 1.2);
+		for (const layer of horizontalAxis) {
+			context.beginPath();
+			context.strokeStyle = `rgba(0, 0, 0, ${layer.weight * 0.5})`;
+			for (const tick of layer.values) {
+				const pos = screenMapX(tick);
+				context.moveTo(pos, 0);
+				context.lineTo(pos, height);
+			}
+			context.stroke();
 		}
-		for (const line of verticalAxis) {
-			context.moveTo(0, height - line.pos * height);
-			context.lineTo(width, height - line.pos * height);
+
+		const verticalAxis = logScale ? axisLinesLog(span.y, 1.2) : axisLines3(span.y, 1.2);
+		for (const layer of verticalAxis) {
+			context.beginPath();
+			context.strokeStyle = `rgba(0, 0, 0, ${layer.weight * 0.5})`;
+			for (const tick of layer.values) {
+				const pos = Math.floor(screenMapY(tick)) - 0.5;
+				context.moveTo(0, pos);
+				context.lineTo(width, pos);
+			}
+			context.stroke();
 		}
 		context.stroke();
 
@@ -66,13 +90,11 @@
 		const sampleStart = span.x.min * samplerate;
 		const sampleEnd = span.x.max * samplerate;
 		const sampleSpan = sampleEnd - sampleStart;
-		const screenSpan = span2d(0, width, 0, height);
 
 		let sampleStartIndex = Math.max(Math.floor(sampleStart), 0);
-		// const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
-		const sampleEndIndex = sample.length;
-
-		const h2 = Math.ceil(height / 2);
+		const sampleEndIndex = Math.min(Math.ceil(sampleEnd), sample.length);
+		// const 
+		// const sampleEndIndex = sample.length;
 
 		if (sampleSpan > width * 2) {
 			context.lineWidth = 1;
@@ -93,19 +115,39 @@
 					max = Math.max(max, val);
 				}
 
-				const mappedMin = span.y.remap(min, screenSpan.y);
-				const mappedMax = span.y.remap(max, screenSpan.y);
-				const rectY = height - mappedMax - stroke;
-				const rectH = mappedMax - mappedMin + stroke;
+				const mappedMin = screenMapY(min);
+				const mappedMax = screenMapY(max);
+				// mappedMax is the top of the rect
+				const rectY = mappedMax - stroke;
+				const rectH = mappedMin - mappedMax + stroke;
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {
-			for (let index = sampleStartIndex; index < sampleEndIndex; index++) {
-				const x = (index - sampleStart) / sampleSpan;
-				const y = span.y.remap(sample.get(index), screenSpan.y);
-				context.lineTo(x * width, height - y);
+			if (stairstep) {
+				let lastValue = sample.get(sampleStartIndex);
+				for (let index = 0; index < width; index++) {
+					const x = (index / width) * sampleSpan + sampleStart;
+					const x1 = Math.floor(x);
+					const x2 = Math.ceil(x);
+					const weight = x - x1;
+					const v1 = sample.get(x1);
+					const v2 = sample.get(x2);
+					const value = v1 + weight * (v2 - v1);
+					const y1 = Math.floor(screenMapY(lastValue)) + 0.5;
+					const y2 = Math.floor(screenMapY(value)) + 0.5;
+					const minY = Math.min(y1, y2);
+					const maxY = Math.max(y1, y2);
+					context.fillRect(index, minY, 1, Math.max(1, maxY - minY));
+					lastValue = value;
+				}
+			} else {
+				for (let index = sampleStartIndex; index < sampleEndIndex; index++) {
+					const x = (index - sampleStart) / sampleSpan;
+					const y = screenMapY(sample.get(index));
+					context.lineTo(x * width, y);
+				}
+				context.stroke();
 			}
-			context.stroke();
 		}
 	};
 

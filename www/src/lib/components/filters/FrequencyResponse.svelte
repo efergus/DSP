@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { maxIndex, SampleView } from '$lib/audio/sample';
 	import type { IirDigital } from '$lib/dsp/iir';
-	import { span2d } from '$lib/math/geometry';
+	import { span2d } from '$lib/math/span';
 	import { throttle } from '$lib/input/debounce';
 	import Waveform from '../audio/Waveform.svelte';
 

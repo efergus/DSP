@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
 	import { chirp_sample, phaseNoise, pinkNoiseSample, whiteNoiseSample } from '$lib/dsp/samples';
-	import { span1d, type Span2D } from '$lib/math/geometry';
+	import { span1d, type Span2D } from '$lib/math/span';
 	import AudioFileInput from './AudioFileInput.svelte';
 	import PlayerComponent from './PlayerComponent.svelte';
 	import Recorder from './Recorder.svelte';

@@ -5,7 +5,7 @@
 	import StopCircle from '$lib/icons/StopCircle.svelte';
 	import { onMount } from 'svelte';
 	import { context, dsp_greet } from '$lib/dsp/dsp';
-	import { combine, draw_waveform } from '$lib/audio/draw';
+	import { combine, draw_waveform } from '$lib/audio/axes';
 	import { scale } from 'svelte/transition';
 	import { read } from '$app/server';
 	import Waveform from './OldWaveform.svelte';
@@ -323,7 +323,6 @@
 		return arr;
 	});
 	let response_magnitude = $derived(response.reduce((a, b) => Math.max(a, b)));
-	// $inspect({ response_magnitude });
 
 	let filter_impulse1 = $derived.by(() => {
 		let filter = iir_filter(zeros, poles, butter_digital.gain);

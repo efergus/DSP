@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { axisLines, axisLines2, axisLines3 } from '$lib/audio/draw';
-	import { span1d, span2d, type Span1D } from '$lib/math/geometry';
+	import { axisLines, axisLines2, axisLines3 } from '$lib/audio/axes';
+	import { span1d, span2d, type Span1D } from '$lib/math/span';
 	import { mouse } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
 
@@ -50,9 +50,6 @@
 	);
 	const viewBox = $derived(vertical ? `0 0 ${width} ${length}` : `0 0 ${length} ${width}`);
 
-	if (!vertical) {
-		$inspect({ span, lines, lineLocations });
-	}
 </script>
 
 <svg
@@ -64,7 +61,7 @@
 			mousePos = vertical ? state.pos.y : state.pos.x;
 		},
 		{
-			remap: span2d(span.min, span.max, span.min, span.max)
+			remap: span2d(span.start, span.end, span.start, span.end)
 		}
 	)}
 	onwheel={(event) => {

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
-	import { span2d, type Span2D } from '$lib/math/geometry';
+	import { span2d, type Span2D } from '$lib/math/span';
 	import type { MouseStateHandler } from '$lib/input/mouse';
 	import type { Snippet } from 'svelte';
 	import Axis from './Axis.svelte';
@@ -22,7 +22,7 @@
 </script>
 
 <div>
-	<div class="player">
+	<!-- <div class="player">
 		<Axis
 			length={200}
 			span={span.y}
@@ -31,20 +31,14 @@
 				if (verticalSpan.size() < 1e-12) {
 					return;
 				}
-				span = span2d(span.x.min, span.x.max, verticalSpan.min, verticalSpan.max);
+				span = span2d(span.x.start, span.x.end, verticalSpan.min, verticalSpan.max);
 			}}
-		/>
+		/> -->
 		<Waveform
 			{data}
 			{span}
-			onMouse={(state) => {
-				if (state.down) {
-					span = span.move(-state.delta.x, -state.delta.y);
-				}
-			}}
-			stairstep
 		/>
-		<div></div>
+		<!-- <div></div>
 		<Axis
 			length={400}
 			span={span.x}
@@ -52,10 +46,10 @@
 				if (horizontalSpan.size() < 1 / DEFAULT_AUDIO_SAMPLERATE) {
 					return;
 				}
-				span = span2d(horizontalSpan.min, horizontalSpan.max, span.y.min, span.y.max);
+				span = span2d(horizontalSpan.min, horizontalSpan.max, span.y.start, span.y.end);
 			}}
 		/>
-	</div>
+	</div> -->
 	<div class="buttons">
 		{@render children?.()}
 		<button

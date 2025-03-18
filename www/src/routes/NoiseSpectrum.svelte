@@ -14,7 +14,6 @@
 	// const noiseSample = whiteNoise(size);
 	const noiseSample = phaseNoise(size);
 	const filteredSample = $derived(filter.apply(noiseSample));
-	// $inspect({ filteredSample });
 </script>
 
 <Waveform data={noiseSample} />

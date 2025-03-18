@@ -1,4 +1,4 @@
-import { point, type Point, type Span2D } from "$lib/math/geometry";
+import { point, span2d, type Point, type Span2D } from "$lib/math/span";
 
 export type SavedMouseState = {
     down: boolean,
@@ -29,7 +29,7 @@ export type MouseState = {
 }
 
 export type MouseOptions = {
-    remap?: Span2D,
+    remap?: Span2D | ((point: Point) => Point),
     state?: SavedMouseState,
     target?: HTMLElement,
     clickMovementThreshold?: number
@@ -50,12 +50,17 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
     const { remap, clickMovementThreshold = 12 } = options;
 
     // y axis is flipped so top of screen is positive y
-    const remapRect = remap ? {
-        x: remap.x.min,
-        y: remap.y.max,
-        w: remap.x.max - remap.x.min,
-        h: remap.y.min - remap.y.max
-    } : null;
+    let remapFn;
+    if (remap) {
+        if (typeof remap === 'function') {
+            remapFn = remap;
+        } else {
+            remapFn = (point: Point, sourceRect: Span2D) => sourceRect.remap(point, remap)
+        }
+    }
+    else {
+        remapFn = (point: Point) => point;
+    }
 
     const wrapper = (event: MouseEvent) => {
         const target = options.target ?? event.currentTarget as HTMLElement;
@@ -75,9 +80,10 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
         let pos = pixelPos;
         let pixelDelta = point(event.movementX, event.movementY);
         let delta = pixelDelta;
-        if (remapRect) {
-            pos = point(pixelPos.x * remapRect.w / rect.width + remapRect.x, pixelPos.y * remapRect.h / rect.height + remapRect.y);
-            delta = point(pixelDelta.x * remapRect.w / rect.width, pixelDelta.y * remapRect.h / rect.height);
+        if (remapFn) {
+            const sourceRect = span2d(0, rect.width, 0, rect.height);
+            pos = remapFn(pixelPos, sourceRect);
+            delta = remapFn(pixelDelta, sourceRect);
         }
         internalState.moved += Math.sqrt(event.movementX ** 2 + event.movementY ** 2);
         let now = Date.now();

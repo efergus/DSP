@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { draw_waveform } from '$lib/audio/draw';
+	import { draw_waveform } from '$lib/audio/axes';
 	import { onMount } from 'svelte';
 
 	let {

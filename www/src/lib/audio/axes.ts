@@ -1,4 +1,4 @@
-import { span1d, type Span1D } from "$lib/math/geometry";
+import { span1d, type Span1D } from "$lib/math/span";
 
 export enum AxisScale {
     Linear = 'linear',
@@ -145,8 +145,8 @@ export function* axisLines3(span: Span1D, maxDepth: number = 1.4): Generator<Det
     let depth = 0;
     while (depth < maxDepth) {
         const effectiveZoom = magnitude > 0 ? zoom / 10 ** magnitude : zoom * 10 ** (-magnitude);
-        const startIndex = Math.floor(span.min * effectiveZoom);
-        const endIndex = Math.ceil(span.max * effectiveZoom);
+        const startIndex = Math.floor(span.start * effectiveZoom);
+        const endIndex = Math.ceil(span.end * effectiveZoom) + 1;
         const start = startIndex / effectiveZoom;
         const effectiveMagnitude = -Math.ceil(Math.log10(effectiveZoom));
         // yield each layer at a given depth
@@ -220,8 +220,8 @@ export function* axisLines2(span: Span1D, density = 2.3) {
 
     for (let depth = Math.ceil(density + remainder); depth >= 0; depth--) {
         const step = 10 ** (magnitude - depth);
-        const start = Math.floor(span.min / step);
-        const end = Math.ceil(span.max / step);
+        const start = Math.floor(span.start / step);
+        const end = Math.ceil(span.end / step);
         for (let index = start; index <= end; index++) {
             let adjustment = 0.0;
             if (depth > 0) {
@@ -244,7 +244,7 @@ export function* axisLines2(span: Span1D, density = 2.3) {
             yield {
                 label: axisLabel(index, magnitude - depth, base),
                 depth: result,
-                pos: (value - span.min) / width,
+                pos: (value - span.start) / width,
                 index
             }
         }
@@ -268,13 +268,13 @@ function divisorPowerWithSecondary(value: number, base = 10, secondary = 5, seco
 }
 
 export function* axisLines(span: Span1D, density = 2.5, scale = 1) {
-    const width = span.max - span.min;
+    const width = span.end - span.start;
     const widthLog = Math.log10(width);
     const magnitude = Math.floor(widthLog - density + 0.6);
     const remainder = widthLog - magnitude - density;
     const step = 10 ** magnitude;
-    const left = Math.floor(span.min / step);
-    const right = Math.ceil(span.max / step);
+    const left = Math.floor(span.start / step);
+    const right = Math.ceil(span.end / step);
 
     if (right >= Number.MAX_SAFE_INTEGER) {
         throw Error(`${right} too big`)
@@ -299,18 +299,18 @@ export function* axisLines(span: Span1D, density = 2.5, scale = 1) {
 }
 
 export function* axisLinesLog(span: Span1D, maxDepth: number = 1): Generator<AxisLayer> {
-    const minLog = Math.floor(Math.log10(span.min));
-    const maxLog = Math.ceil(Math.log10(span.max));
+    const minLog = Math.floor(Math.log10(span.start));
+    const maxLog = Math.ceil(Math.log10(span.end));
 
     // Major lines (powers of 10)
     const majorValues: number[] = [];
     for (let exp = minLog; exp <= maxLog; exp++) {
         const value = Math.pow(10, exp);
-        if (value >= span.min && value <= span.max) {
+        if (value >= span.start && value <= span.end) {
             majorValues.push(value);
         }
     }
-    
+
     yield {
         depth: 0,
         weight: 1,
@@ -328,7 +328,7 @@ export function* axisLinesLog(span: Span1D, maxDepth: number = 1): Generator<Axi
         const baseValue = Math.pow(10, exp);
         for (let i = 2; i < 10; i++) {
             const value = i * baseValue;
-            if (value >= span.min && value <= span.max) {
+            if (value >= span.start && value <= span.end) {
                 minorValues.push(value);
             }
         }

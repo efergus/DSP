@@ -124,7 +124,6 @@
 	$effect(() => onchange?.(zeros, poles));
 
 	let visuallySelected = $derived(hovered >= 0 ? hovered : active);
-	// $inspect({ hovered, active, visuallySelected });
 </script>
 
 <div>

@@ -2,7 +2,7 @@
 	import { SampleData, type Sample } from '$lib/audio/sample';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
-	import { span2d } from '$lib/math/geometry';
+	import { span2d } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
 	const initialSample = new Float32Array(44100);

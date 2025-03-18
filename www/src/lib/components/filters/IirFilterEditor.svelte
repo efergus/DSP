@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
 	import { filterRoots, IirDigital, single_pole_bandpass, type Root } from '$lib/dsp/iir';
-	import type { Span2D } from '$lib/math/geometry';
+	import type { Span2D } from '$lib/math/span';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import Waveform from '../audio/Waveform.svelte';
 	import FilterDetails from './FilterDetails.svelte';

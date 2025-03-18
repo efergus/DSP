@@ -1,34 +1,35 @@
-
-export class Point {
-    constructor(public x: number = 0, public y: number = 0) { }
-
-    copy(): Point {
-        return new Point(this.x, this.y);
-    }
-}
+import { Point } from "./point";
 
 export class Span1D {
-    constructor(public min: number = 0, public max: number = 1) { }
+    constructor(public start: number = 0, public end: number = 1) { }
+
+    get min(): number {
+        return Math.min(this.start, this.end);
+    }
+
+    get max(): number {
+        return Math.max(this.start, this.end);
+    }
 
     copy(): Span1D {
-        return new Span1D(this.min, this.max);
+        return new Span1D(this.start, this.end);
     }
 
     move(x: number): Span1D {
-        return new Span1D(this.min + x, this.max + x);
+        return new Span1D(this.start + x, this.end + x);
     }
 
     scale(scale: number, center?: number): Span1D {
-        center = center ?? ((this.max + this.min) / 2);
-        const d1 = this.min - center;
-        const d2 = this.max - center;
+        center = center ?? ((this.end + this.start) / 2);
+        const d1 = this.start - center;
+        const d2 = this.end - center;
         return new Span1D(center + d1 * scale, center + d2 * scale);
     }
 
     static intersect(span1: Span1D, span2: Span1D): Span1D {
         return new Span1D(
-            Math.max(span1.min, span2.min),
-            Math.min(span1.max, span2.max)
+            Math.max(span1.start, span2.start),
+            Math.min(span1.end, span2.end)
         );
     }
 
@@ -37,15 +38,15 @@ export class Span1D {
     }
 
     remap(value: number, to: Span1D): number {
-        return to.min + (value - this.min) * (to.max - to.min) / (this.max - this.min);
+        return to.start + (value - this.start) * (to.end - to.start) / (this.end - this.start);
     }
 
     equals(span: Span1D): boolean {
-        return this.min === span.min && this.max === span.max;
+        return this.start === span.start && this.end === span.end;
     }
 
     size(): number {
-        return Math.abs(this.max - this.min);
+        return Math.abs(this.end - this.start);
     }
 }
 

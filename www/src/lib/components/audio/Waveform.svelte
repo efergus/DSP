@@ -236,7 +236,7 @@
 		e.preventDefault();
 		const shiftKey = e.shiftKey;
 		if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
-			const yPos = screenSpan.y.remap(localMousePos.y, span.y);
+			const yPos = mappedMousePos.y;
 			const deltaY = e.deltaY;
 			const scaleY = Math.exp(-deltaY / 100);
 			if (onZoom) {
@@ -245,7 +245,7 @@
 				span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
 			}
 		} else {
-			const xPos = screenSpan.x.remap(localMousePos.x, span.x);
+			const xPos = mappedMousePos.x;
 			const deltaY = e.deltaY;
 			const scaleX = Math.exp(-deltaY / 100);
 			if (onZoom) {

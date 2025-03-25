@@ -6,7 +6,7 @@
 		complex_norm,
 		type Complex
 	} from '$lib/dsp/complex';
-	import { addConjugates } from '$lib/audio/iir';
+	import { addConjugates } from '$lib/dsp/iir';
 	import PoleZeroPlot, { type ComplexMouseState } from './PoleZeroPlot.svelte';
 	import RootEditor from './RootEditor.svelte';
 	import type { Root } from '$lib/dsp/iir';

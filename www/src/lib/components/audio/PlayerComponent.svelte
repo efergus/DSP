@@ -7,6 +7,7 @@
 	import Waveform from './Waveform.svelte';
 	import { Player } from '$lib/audio/player';
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
+	import Button from '../input/Button.svelte';
 
 	let {
 		data,
@@ -22,56 +23,47 @@
 </script>
 
 <div>
-	<!-- <div class="player">
-		<Axis
-			length={200}
-			span={span.y}
-			vertical
-			onScale={(verticalSpan) => {
-				if (verticalSpan.size() < 1e-12) {
-					return;
-				}
-				span = span2d(span.x.start, span.x.end, verticalSpan.min, verticalSpan.max);
-			}}
-		/> -->
-		<Waveform
-			{data}
-			{span}
-		/>
-		<!-- <div></div>
-		<Axis
-			length={400}
-			span={span.x}
-			onScale={(horizontalSpan) => {
-				if (horizontalSpan.size() < 1 / DEFAULT_AUDIO_SAMPLERATE) {
-					return;
-				}
-				span = span2d(horizontalSpan.min, horizontalSpan.max, span.y.start, span.y.end);
-			}}
-		/>
-	</div> -->
+	<div class="audio">
+		<Waveform {data} bind:span />
+		<!-- <Spectrogram {data} bind:span /> -->
+	</div>
 	<div class="buttons">
 		{@render children?.()}
-		<button
+		<Button
 			onclick={() => {
 				const player = new PlayerWithFilter();
 				player.play(new SampleData(data));
 			}}
 		>
 			Play
-		</button>
+		</Button>
 	</div>
 </div>
 
 <style lang="less">
-	.player {
-		display: grid;
-		grid-template-columns: 40px 400px;
-		grid-template-rows: 200px 40px;
+	.audio {
+		display: flex;
+		justify-content: space-between;
 	}
 
 	.buttons {
+		margin-top: 24px;
 		display: flex;
-		gap: 6px;
+		justify-content: stretch;
+		> :global(*:not(:first-child)) {
+			border-left: none;
+		}
+		> :global(*:not(:last-child)) {
+			border-right-color: silver;
+		}
+		> :global(div.spacer) {
+			flex-grow: 1;
+			border-style: solid;
+			border-top-color: black;
+			border-bottom-color: black;
+			border-left: none;
+			border-width: 1px;
+			margin: 0px;
+		}
 	}
 </style>

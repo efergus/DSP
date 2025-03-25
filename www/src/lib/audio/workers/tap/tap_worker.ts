@@ -1,4 +1,3 @@
-import { IirDigital } from "../../iir";
 
 export type AudioTapOptions = {
     silent?: boolean;

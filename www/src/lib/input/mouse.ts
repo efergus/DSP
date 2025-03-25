@@ -1,4 +1,5 @@
-import { point, span2d, type Point, type Span2D } from "$lib/math/span";
+import { point, type Point } from "$lib/math/point";
+import { span2d, type Span2D } from "$lib/math/span";
 
 export type SavedMouseState = {
     down: boolean,

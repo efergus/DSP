@@ -4,13 +4,15 @@
 		width,
 		height,
 		fill = 'none',
-		stroke = 'currentColor'
+		stroke = 'currentColor',
+		strokeWidth = 2
 	}: {
 		size?: number;
 		width?: number;
 		height?: number;
 		fill?: string;
 		stroke?: string;
+		strokeWidth?: number;
 	} = $props();
 
 	width = width ?? height ?? size;
@@ -18,14 +20,14 @@
 </script>
 
 <svg
+	xmlns="http://www.w3.org/2000/svg"
 	{width}
 	{height}
-	viewBox="0 0 24 24"
-	version="1.1"
-	xmlns="http://www.w3.org/2000/svg"
 	{fill}
 	{stroke}
-	shape-rendering="crispEdges"
+	stroke-width={strokeWidth}
+	viewBox="0 0 24 24"
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	class="feather feather-square"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg
 >
-	<rect width="20" height="20" x="2" y="2" />
-</svg>

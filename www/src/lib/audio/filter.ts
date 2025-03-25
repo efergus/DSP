@@ -1,5 +1,5 @@
+import { realCoefficients } from "$lib/dsp/iir";
 import { complex, complex_add, complex_div, complex_mul, complex_mul_scalar, complex_norm2, complex_polar, complex_sub, type Complex } from "../dsp/complex";
-import { realCoefficients } from "./iir";
 import type { NumArr } from "./sample";
 
 type IIRFilter = {

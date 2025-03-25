@@ -2,9 +2,10 @@
 	import { Recorder as AudioRecorder } from '$lib/audio/recorder';
 	import { SampleData, SampleSlice } from '$lib/audio/sample';
 	import Circle from '$lib/icons/Circle.svelte';
+	import CirclePixel from '$lib/icons/CirclePixel.svelte';
 	import Square from '$lib/icons/Square.svelte';
-	import Upload from '$lib/icons/Upload.svelte';
 	import { uniqueId } from '../id';
+	import Button from '../input/Button.svelte';
 
 	const {
 		onData,
@@ -27,7 +28,8 @@
 	};
 </script>
 
-<button
+<Button
+	slim
 	onclick={() => {
 		if (recording) {
 			recorder.stop();
@@ -43,6 +45,6 @@
 	{#if recording}
 		<Square fill="black" />
 	{:else}
-		<Circle stroke="red" fill="red" />
+		<CirclePixel stroke="red" fill="red" />
 	{/if}
-</button>
+</Button>

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { axisLines, axisLines2, axisLines3 } from '$lib/audio/axes';
+	import { axisLines } from '$lib/audio/axes';
 	import { span1d, span2d, type Span1D } from '$lib/math/span';
 	import { mouse } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
@@ -26,7 +26,7 @@
 
 	const screenSpan = $derived(span1d(0, length));
 	const lineLocations = $derived(
-		Array.from(axisLines3(span, density)).map((spec) => ({
+		Array.from(axisLines(span, density)).map((spec) => ({
 			depth: spec.depth,
 			magnitude: spec.magnitude,
 			format: spec.format,
@@ -49,7 +49,6 @@
 		})
 	);
 	const viewBox = $derived(vertical ? `0 0 ${width} ${length}` : `0 0 ${length} ${width}`);
-
 </script>
 
 <svg

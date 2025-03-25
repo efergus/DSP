@@ -48,10 +48,13 @@
 
 <style lang="less">
 	label {
-		display: block;
+		display: inline;
 		padding: 6px;
-		border-radius: 6px;
-		background-color: rgba(0, 0, 0, 0.2);
+		background-color: white;
+		border-width: 1px;
+		border-style: solid;
+		border-radius: 0px;
+		border-color: black;
 		width: max-content;
 
 		&:hover {

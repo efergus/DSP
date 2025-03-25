@@ -27,5 +27,7 @@
 	{stroke}
 	shape-rendering="crispEdges"
 >
-	<rect width="20" height="20" x="2" y="2" />
+	<g>
+		<path d="m 2,6 v 12 h 4 v 4 h 12 v -4 h 4 V 6 H 18 V 2 H 6 v 4 z" />
+	</g>
 </svg>

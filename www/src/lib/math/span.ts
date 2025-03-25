@@ -28,8 +28,8 @@ export class Span1D {
 
     static intersect(span1: Span1D, span2: Span1D): Span1D {
         return new Span1D(
-            Math.max(span1.start, span2.start),
-            Math.min(span1.end, span2.end)
+            Math.max(span1.min, span2.min),
+            Math.min(span1.max, span2.max)
         );
     }
 
@@ -37,8 +37,12 @@ export class Span1D {
         return Span1D.intersect(this, span);
     }
 
-    remap(value: number, to: Span1D): number {
+    remap(value: number, to: Span1D = UNIT_SPAN1): number {
         return to.start + (value - this.start) * (to.end - to.start) / (this.end - this.start);
+    }
+
+    remapSize(value: number, to: Span1D = UNIT_SPAN1): number {
+        return value / this.size() * to.size();
     }
 
     equals(span: Span1D): boolean {
@@ -47,6 +51,10 @@ export class Span1D {
 
     size(): number {
         return Math.abs(this.end - this.start);
+    }
+
+    center(): number {
+        return (this.end + this.start) / 2;
     }
 }
 
@@ -92,6 +100,13 @@ export class Span2D {
         );
     }
 
+    remapSize(point: Point, to: Span2D): Point {
+        return new Point(
+            this.x.remapSize(point.x, to.x),
+            this.y.remapSize(point.y, to.y)
+        );
+    }
+
     static intersect(span1: Span2D, span2: Span2D): Span2D {
         return new Span2D(
             span1.x.intersect(span2.x),
@@ -103,13 +118,17 @@ export class Span2D {
         return Span2D.intersect(this, span);
     }
 
+    center(): Point {
+        return new Point(this.x.center(), this.y.center());
+    }
+
     equals(span: Span2D): boolean {
         return this.x.equals(span.x) && this.y.equals(span.y);
     }
-}
 
-export function point(x = 0, y = 0): Point {
-    return new Point(x, y);
+    size(): Point {
+        return new Point(this.x.size(), this.y.size());
+    }
 }
 
 export function span1d(min = 0, max = 1): Span1D {
@@ -129,3 +148,6 @@ export function span2dFromSpans(
 ): Span2D {
     return new Span2D(x, y);
 }
+
+const UNIT_SPAN1 = new Span1D(0, 1);
+const UNIT_SPAN2 = new Span2D(UNIT_SPAN1, UNIT_SPAN1);

@@ -5,24 +5,25 @@
 		type Sample,
 		type SampleData
 	} from '$lib/audio/sample';
-	import { point, Span1D, span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
+	import { Span1D, span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
 	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
-	import { axisLines, axisLines2, axisLines3, axisLinesLog, AxisScale } from '$lib/audio/axes';
-	import type { Point } from '$lib/math/point';
+	import { axisLines, axisLinesLog, AxisScale } from '$lib/audio/axes';
+	import { point, type Point } from '$lib/math/point';
 
 	let {
 		data,
-		span = span2d(0, 1, -1, 1),
-		width = 400,
-		height = 200,
+		span = $bindable(span2d(0, 1, -1, 1)),
+		width = 500,
+		height = 300,
 		cursor = 0,
 		strokeWidth = 1,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
 		scale = AxisScale.Linear,
 		axisSize = 24,
 		stairstep = false,
-		onZoom = () => {},
+		onZoom,
+		onMove
 	}: {
 		data: Sample;
 		span?: Span2D;
@@ -35,11 +36,13 @@
 		scale?: AxisScale;
 		stairstep?: boolean;
 		onZoom?: (delta: { x: number; y: number }, pos: Point) => void;
+		onMove?: (delta: { x: number; y: number }, pos: Point) => void;
 	} = $props();
 
 	let canvas: HTMLCanvasElement;
 
-	let mousePos = $state(point());
+	let localMousePos = $state(point());
+	let mappedMousePos = $state(point());
 	const logScale = $derived(scale === AxisScale.Log && span.y.start > 0);
 	const screenSpan = $derived(span2d(axisSize, width, height - axisSize, 0));
 	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
@@ -51,11 +54,14 @@
 	);
 
 	const isInVerticalAxis = $derived((pos: Point) => pos.x <= axisSize && pos.y < height - axisSize);
-	const isInHorizontalAxis = $derived((pos: Point) => pos.x > axisSize && pos.y >= height - axisSize);
+	const isInHorizontalAxis = $derived(
+		(pos: Point) => pos.x > axisSize && pos.y >= height - axisSize
+	);
 	const isInBody = $derived((pos: Point) => pos.x > axisSize && pos.y < height - axisSize);
 
 	const drawAxis = (context: CanvasRenderingContext2D, span: Span1D, vertical: boolean) => {
 		context.save();
+		// clip rectangle
 		context.beginPath();
 		if (vertical) {
 			context.rect(0, 0, width, height - axisSize);
@@ -65,8 +71,9 @@
 			context.textBaseline = 'bottom';
 		}
 		context.clip();
+
 		const maxDepth = 2.2;
-		const axis = axisLines3(span, maxDepth);
+		const axis = axisLines(span, maxDepth);
 		context.lineWidth = 1;
 		const layers = Array.from(axis);
 		for (let index = layers.length - 1; index >= 0; index--) {
@@ -105,6 +112,16 @@
 			context.stroke();
 		}
 		context.restore();
+
+		// separator line
+		context.beginPath();
+		context.fillStyle = 'black';
+		if (vertical) {
+			context.rect(axisSize - 1, 0, 1, height);
+		} else {
+			context.rect(0, height - axisSize, width, 1);
+		}
+		context.fill();
 	};
 
 	const drawWaveform = (context: CanvasRenderingContext2D, sample: Sample) => {
@@ -217,25 +234,37 @@
 	style={`width: ${width}px; height: ${height}px`}
 	onwheel={(e) => {
 		e.preventDefault();
-		if (isInBody(mousePos) || isInHorizontalAxis(mousePos)) {
-			const xPos = screenSpan.x.remap(mousePos.x, span.x);
-			const deltaY = e.deltaY;
-			const scaleX = Math.exp(-deltaY / 100);
-			span = span2dFromSpans(span.x.scale(scaleX, xPos), span.y);
-			onZoom({ x: deltaY, y: 1 }, mousePos);
-		}
-		if (isInVerticalAxis(mousePos)) {
-			const yPos = screenSpan.y.remap(mousePos.y, span.y);
+		const shiftKey = e.shiftKey;
+		if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
+			const yPos = screenSpan.y.remap(localMousePos.y, span.y);
 			const deltaY = e.deltaY;
 			const scaleY = Math.exp(-deltaY / 100);
-			span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
-			onZoom({ x: 1, y: deltaY }, mousePos);
+			if (onZoom) {
+				onZoom({ x: 1, y: deltaY }, mappedMousePos);
+			} else {
+				span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
+			}
+		} else {
+			const xPos = screenSpan.x.remap(localMousePos.x, span.x);
+			const deltaY = e.deltaY;
+			const scaleX = Math.exp(-deltaY / 100);
+			if (onZoom) {
+				onZoom({ x: deltaY, y: 1 }, mappedMousePos);
+			} else {
+				span = span2dFromSpans(span.x.scale(scaleX, xPos), span.y);
+			}
 		}
 	}}
-	{...mouse(({ pos, delta })=> {
-		mousePos = pos;
-		if (isInBody(pos)) {
-
+	{...mouse(({ pos, delta, down }) => {
+		localMousePos = pos;
+		mappedMousePos = screenSpan.remap(pos, span);
+		if (down) {
+			const mappedDelta = screenSpan.remapSize(delta, span);
+			if (onMove) {
+				onMove(mappedDelta, mappedMousePos);
+			} else {
+				span = span.move(-mappedDelta.x, mappedDelta.y);
+			}
 		}
 	})}
 ></canvas>

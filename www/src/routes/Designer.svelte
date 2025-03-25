@@ -14,7 +14,7 @@
 
 	let window = 0.8;
 	let span = $state(span2d(0, window, -1, 1));
-	const minDuration = 1;
+	const minDuration = 1 / DEFAULT_AUDIO_SAMPLERATE;
 	let effectiveLimits = $state(span2d(0, window, -100, 100));
 	onMount(() => {
 		let lastDuration = 0;
@@ -69,8 +69,8 @@
 </script>
 
 <div>
-	<Tape bind:span {data} onData={(sample) => (data = sample)} />
-	<IirFilterEditor {data} bind:span />
+	<Tape bind:span={getSpan, setSpan} {data} onData={(sample) => (data = sample)} />
+	<IirFilterEditor {data} bind:span={getSpan, setSpan} />
 </div>
 
 <style>

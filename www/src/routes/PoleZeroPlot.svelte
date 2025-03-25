@@ -63,7 +63,7 @@
 	};
 
 	const clear = (context: CanvasRenderingContext2D) => {
-		context.fillStyle = 'rgb(255 255 255)';
+		context.fillStyle = 'rgb(220 220 220)';
 		context.fillRect(0, 0, canvas.width, canvas.height);
 	};
 
@@ -73,14 +73,14 @@
 		let left = pos2px(-pad, 0);
 		let right = pos2px(pad, 0);
 
-		context.strokeStyle = 'rgb(120 120 120)';
-		context.lineWidth = 2;
+		context.strokeStyle = 'black';
+		context.lineWidth = 1;
 		context.beginPath();
-		context.moveTo(top.x, top.y);
-		context.lineTo(bottom.x, bottom.y);
+		context.moveTo(top.x + 0.5, top.y);
+		context.lineTo(bottom.x + 0.5, bottom.y);
 		context.stroke();
-		context.moveTo(left.x, left.y);
-		context.lineTo(right.x, right.y);
+		context.moveTo(left.x, left.y - 0.5);
+		context.lineTo(right.x, right.y - 0.5);
 		context.stroke();
 	};
 
@@ -124,9 +124,9 @@
 	const draw_unit_circle = (context: CanvasRenderingContext2D) => {
 		draw_circle(context, complex(0, 0), {
 			radius: val2px(1),
-			strokeStyle: 'rgb(120 120 120)',
-			lineWidth: 2,
-			fillStyle: 'rgb(210 210 210)'
+			strokeStyle: 'black',
+			lineWidth: 1,
+			fillStyle: 'white'
 		});
 	};
 

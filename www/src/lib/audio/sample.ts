@@ -22,6 +22,7 @@ export class SampleData implements SampleWithSamplerate {
     declare stride: number;
     declare length: number;
     declare samplerate: number;
+    declare updateVersion: number;
 
     constructor(data: Float32Array | Float32Array[] | Sample = [], samplerate: number = DEFAULT_AUDIO_SAMPLERATE, stride: number = 128) {
         if (data instanceof Float32Array) {
@@ -31,6 +32,7 @@ export class SampleData implements SampleWithSamplerate {
         this.stride = stride;
         this.length = 0;
         this.samplerate = samplerate;
+        this.updateVersion = 0;
 
         if (Array.isArray(data)) {
             let index = 0;
@@ -71,6 +73,7 @@ export class SampleData implements SampleWithSamplerate {
         const frame = index % this.stride;
         const chunk = (index - frame) / this.stride;
         this.data[chunk][frame] = value;
+        this.updateVersion += 1;
     }
 
     setRange(data: Float32Array | Sample, index: number = 0, offset: number = 0, length: number = Infinity) {
@@ -86,6 +89,7 @@ export class SampleData implements SampleWithSamplerate {
             offset += 1;
             index += 1;
         }
+        this.updateVersion += 1;
     }
 
     frameIndex(index: number) {
@@ -105,6 +109,7 @@ export class SampleData implements SampleWithSamplerate {
             this.data.splice(chunkLength, this.data.length - chunkLength);
         }
         this.length = length;
+        this.updateVersion += 1;
     }
 
     duration(): number {
@@ -161,6 +166,12 @@ export class SampleSlice implements SampleWithSamplerate {
 
     frames(): number {
         return this.length;
+    }
+
+    *[Symbol.iterator]() {
+        for (let i = 0; i < this.length; i++) {
+            yield this.get(i);
+        }
     }
 }
 

@@ -11,15 +11,14 @@ export const square_sample = (freq = 440, samplerate = 44100, length?: number) =
     return new SampleData(res, samplerate);
 };
 
-export const chirp_sample = (base_freq = 20, peak_freq = 1000, samplerate = 44100, length?: number) => {
+export const chirpSample = (base_freq = 20, peak_freq = 1000, samplerate = 44100, length?: number) => {
+    // (x^2/2)' = x
     length = length ?? samplerate * 4;
     let res = new Float32Array(length);
-    let phase = 0;
     for (let i = 0; i < length; i++) {
         const current_freq =
             base_freq + (peak_freq - base_freq) * (i / length);
-        res[i] = Math.sin(2 * Math.PI * phase);
-        phase += current_freq / samplerate;
+        res[i] = Math.sin(Math.PI * current_freq * i / samplerate);
     }
     return new SampleData(res, samplerate);
 };

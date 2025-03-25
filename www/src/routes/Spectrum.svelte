@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { draw_waveform } from '$lib/audio/axes';
-	import { hann_index } from '$lib/audio/window';
+	import { hann_index } from '$lib/dsp/window';
 	import { context } from '$lib/dsp/dsp';
 	import { onMount } from 'svelte';
 

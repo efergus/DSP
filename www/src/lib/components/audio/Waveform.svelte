@@ -43,6 +43,7 @@
 
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
+	let margin = $state(point());
 	const logScale = $derived(scale === AxisScale.Log && span.y.start > 0);
 	const screenSpan = $derived(span2d(axisSize, width, height - axisSize, 0));
 	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
@@ -73,6 +74,8 @@
 		context.clip();
 
 		const maxDepth = 2.2;
+		const maxTextDepth = 1.3;
+		const maxFullDepth = 1.3;
 		const axis = axisLines(span, maxDepth);
 		context.lineWidth = 1;
 		const layers = Array.from(axis);
@@ -84,27 +87,27 @@
 			const level = 255 - layer.weight * 128;
 			const color = `rgb(${level}, ${level}, ${level})`;
 			context.strokeStyle = color;
-			const textLevel = 255 - Math.max(0, 1 - layer.depth ** 2) * 255;
+			const textLevel = 255 - Math.max(0, 2 - 2 * (layer.depth / maxTextDepth) ** 2) * 255;
 			const textColor = `rgb(${textLevel}, ${textLevel}, ${textLevel})`;
 			context.fillStyle = textColor;
 			context.font = `${textSize}px sans-serif`;
 			if (vertical) {
-				const extent = layer.depth < 1.2 ? width : axisSize;
+				const extent = layer.depth < maxFullDepth ? width : axisSize;
 				for (const tick of layer.values) {
 					const pos = Math.floor(screenMapY(tick)) + 0.5;
 					context.moveTo((1 - layer.weight) * axisSize, pos);
 					context.lineTo(extent, pos);
-					if (layer.depth <= 1) {
+					if (layer.depth <= maxTextDepth) {
 						context.fillText(layer.format(tick), 0, pos + textOffset);
 					}
 				}
 			} else {
-				const start = layer.depth < 1.2 ? 0 : height - axisSize;
+				const start = layer.depth < maxFullDepth ? 0 : height - axisSize;
 				for (const tick of layer.values) {
 					const pos = Math.floor(screenMapX(tick)) + 0.5;
 					context.moveTo(pos, start);
 					context.lineTo(pos, height - (1 - layer.weight) * axisSize);
-					if (layer.depth <= 1) {
+					if (layer.depth <= maxTextDepth) {
 						context.fillText(layer.format(tick), pos + textOffset, height);
 					}
 				}
@@ -204,6 +207,10 @@
 	};
 
 	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
+		const rect = canvas.getBoundingClientRect();
+		margin = point(Math.floor(rect.x) - rect.x, Math.floor(rect.y) - rect.y);
+		// console.log(rect);
+
 		context.fillStyle = 'rgb(255 255 255)';
 		context.fillRect(0, 0, width, height);
 
@@ -231,7 +238,7 @@
 	bind:this={canvas}
 	{width}
 	{height}
-	style={`width: ${width}px; height: ${height}px`}
+	style={`width: ${width}px; height: ${height}px; padding: ${margin.x}px ${margin.y}px`}
 	onwheel={(e) => {
 		e.preventDefault();
 		const shiftKey = e.shiftKey;
@@ -268,3 +275,5 @@
 		}
 	})}
 ></canvas>
+
+<style></style>

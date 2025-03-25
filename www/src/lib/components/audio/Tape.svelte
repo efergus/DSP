@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
-	import { chirp_sample, phaseNoise, pinkNoiseSample, whiteNoiseSample } from '$lib/dsp/samples';
+	import { chirpSample, phaseNoise, pinkNoiseSample, whiteNoiseSample } from '$lib/dsp/samples';
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
@@ -33,37 +33,7 @@
 </script>
 
 <div>
-	<PlayerComponent
-		{data}
-		bind:span={() => span,
-		(newSpan: Span2D) => {
-			const size = span.size();
-			if (newSpan.x.size() < effectiveMinDuration) {
-				const center = span.x.center();
-				span = span2d(
-					center - effectiveMinDuration / 2,
-					center + effectiveMinDuration / 2,
-					span.y.start,
-					span.y.end
-				);
-				return;
-			}
-
-			if (
-				size.x > 1e-6 &&
-				isClose(size.x, newSpan.x.size(), 1e-9) &&
-				isClose(size.y, newSpan.y.size(), 1e-9)
-			) {
-				const start = point(
-					clamp(newSpan.x.start, effectiveLimits.x.start, effectiveLimits.x.end - size.x),
-					clamp(newSpan.y.start, effectiveLimits.y.start, effectiveLimits.y.end - size.y)
-				);
-				span = span2d(start.x, start.x + size.x, start.y, start.y + size.y);
-			} else {
-				span = newSpan.intersect(effectiveLimits);
-			}
-		}}
-	>
+	<PlayerComponent {data} bind:span>
 		<AudioFileInput
 			onData={(sample) => {
 				data = sample;
@@ -82,7 +52,7 @@
 
 		<Button
 			onclick={() => {
-				data = chirp_sample(20, 2000);
+				data = chirpSample(20, 2000);
 				onData?.(data);
 			}}
 			>Chirp

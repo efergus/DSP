@@ -10,7 +10,7 @@
 	import { Player } from '$lib/audio/player';
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 
-	const {
+	let {
 		data,
 		span = $bindable()
 		// onFilterChange
@@ -61,7 +61,6 @@
 	});
 
 	const updateFilteredData = (sample: SampleData, filter: IirDigital) => {
-		// console.log('update');
 		let startIndex = 0;
 		if (sample === previousInput && filter === previousFilter) {
 			startIndex = filteredData.length;
@@ -82,9 +81,9 @@
 			const quick = data === previousInput && digital_filter === previousFilter;
 			if (quick || elapsed > 1000 / 10) {
 				updateFilteredData(data, digital_filter);
-				requestAnimationFrame(doFilterUpdate);
 				elapsed = 0;
 			}
+			requestAnimationFrame(doFilterUpdate);
 		};
 		requestAnimationFrame(doFilterUpdate);
 	});
@@ -105,7 +104,7 @@
 	>
 		Play
 	</button>
-	<Waveform data={filteredData} {span} />
+	<Waveform data={filteredData} bind:span />
 </div>
 
 <style lang="less">

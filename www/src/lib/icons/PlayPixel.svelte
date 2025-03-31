@@ -3,8 +3,8 @@
 		size = 24,
 		width,
 		height,
-		fill = 'none',
-		stroke = 'currentColor'
+		fill = 'currentColor',
+		stroke = 'none'
 	}: {
 		size?: number;
 		width?: number;
@@ -29,7 +29,7 @@
 >
 	<g>
 		<path
-			d="M 2,8 H 4 V 6 H 6 V 4 H 8 V 2 h 8 v 2 h 2 v 2 h 2 v 2 h 2 v 8 h -2 v 2 h -2 v 2 h -2 v 2 H 8 V 20 H 6 V 18 H 4 V 16 H 2 Z"
+			d="M 5,22 V 2 h 4 v 2 h 3 v 2 h 3 v 2 h 3 v 2 h 3 v 4 h -3 v 2 h -3 v 2 h -3 v 2 H 9 v 2 z"
 		/>
 	</g>
 </svg>

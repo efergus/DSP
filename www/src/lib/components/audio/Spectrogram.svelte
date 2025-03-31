@@ -11,7 +11,7 @@
 		data,
 		span = $bindable(span2d(0, 1, -1, 1)),
 		width = 500,
-		height = 250,
+		height = 200,
 		scale = 1,
 		cursor = 0,
 		logScale = false,
@@ -144,6 +144,8 @@
 
 <canvas
 	bind:this={canvas}
+	style:width
+	style:height
 	{width}
 	{height}
 	onwheel={(e) => onwheel({ x: e.deltaX, y: e.deltaY }, e)}

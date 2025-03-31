@@ -1,4 +1,4 @@
-import { span1d, type Span1D } from "$lib/math/span";
+import { span1d, span2d, type Span2D, type Span1D } from "$lib/math/span";
 
 export const DEFAULT_AUDIO_SAMPLERATE = 44100;
 
@@ -124,8 +124,9 @@ export class SampleData implements SampleWithSamplerate {
         return this.data.length;
     }
 
-    span(): Span1D {
-        return minmax(this);
+    span(): Span2D {
+        const span = minmax(this);
+        return span2d(0, this.duration(), span.min, span.max);
     }
 
     toFloat32Array(output?: Float32Array): Float32Array {

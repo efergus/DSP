@@ -11,6 +11,7 @@
 
 	const initialSample = whiteNoiseSample(DEFAULT_AUDIO_SAMPLERATE * 4);
 	let data: SampleData = $state(initialSample);
+	let filteredData: SampleData = $state(initialSample);
 
 	let window = 0.8;
 	let span = $state(span2d(0, window, -1, 1));
@@ -69,8 +70,12 @@
 </script>
 
 <div>
-	<Tape bind:span={getSpan, setSpan} {data} onData={(sample) => (data = sample)} />
-	<IirFilterEditor {data} bind:span={getSpan, setSpan} />
+	<Tape bind:span={getSpan, setSpan} {data} {filteredData} onData={(sample) => (data = sample)} />
+	<IirFilterEditor
+		{data}
+		bind:span={getSpan, setSpan}
+		onFilteredData={(sample) => (filteredData = sample)}
+	/>
 </div>
 
 <style>

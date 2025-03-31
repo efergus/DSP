@@ -9,71 +9,94 @@
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import Button from '../input/Button.svelte';
 	import Spectrogram from './Spectrogram.svelte';
+	import PlayPixel from '$lib/icons/PlayPixel.svelte';
 
 	let {
 		data,
+		filteredData,
 		span = $bindable(),
 		onmouse,
-		children
+		children,
+		before
 	}: {
 		data: SampleData;
+		filteredData?: SampleData;
 		span: Span2D;
 		onmouse?: MouseStateHandler;
 		children?: Snippet;
+		before?: Snippet;
 	} = $props();
 
 	let spectrumVerticalSpan = $state(span1d(0, 0.5));
 </script>
 
-<div>
+<div class="stack">
 	<div class="audio">
-		<Waveform {data} bind:span />
-		<Spectrogram
-			{data}
-			logScale
-			bind:span={() => span2dFromSpans(span.x, spectrumVerticalSpan),
-			(newSpan) => {
-				spectrumVerticalSpan = newSpan.y;
-				span = span2dFromSpans(span.x, spectrumVerticalSpan);
-			}}
-		/>
+		<div style:border-right={'1px solid silver'}>
+			<Waveform {data} {filteredData} bind:span height={250} />
+		</div>
+		<div style:border-left={'1px solid silver'}>
+			<Spectrogram
+				height={250}
+				{data}
+				logScale
+				bind:span={() => span2dFromSpans(span.x, spectrumVerticalSpan),
+				(newSpan) => {
+					spectrumVerticalSpan = newSpan.y;
+					span = span2dFromSpans(newSpan.x, span.y);
+				}}
+			/>
+		</div>
 	</div>
 	<div class="buttons">
-		{@render children?.()}
+		{@render before?.()}
 		<Button
+			slim
 			onclick={() => {
 				const player = new PlayerWithFilter();
-				player.play(new SampleData(data));
+				player.play(data);
 			}}
 		>
-			Play
+			<PlayPixel />
 		</Button>
+		{@render children?.()}
 	</div>
 </div>
 
 <style lang="less">
+	.stack {
+		display: flex;
+		flex-direction: column;
+
+		> :not(:last-child) {
+			border-bottom: none;
+		}
+	}
+
 	.audio {
 		display: flex;
 		justify-content: space-between;
+		border: 1px solid black;
 	}
 
 	.buttons {
-		margin-top: 24px;
 		display: flex;
 		justify-content: stretch;
-		> :global(*:not(:first-child)) {
-			border-left: none;
+		border: 1px solid black;
+
+		> :global(*) {
+			border: none;
 		}
-		> :global(*:not(:last-child)) {
-			border-right-color: silver;
+		> :global(:not(:last-child)) {
+			border-right: 1px solid silver;
 		}
 		> :global(div.spacer) {
 			flex-grow: 1;
-			border-style: solid;
-			border-top-color: black;
-			border-bottom-color: black;
-			border-left: none;
-			border-width: 1px;
+			// border-style: solid;
+			// border-top-color: black;
+			// border-bottom-color: black;
+			// border-left: none;
+			// border-width: 1px;
 			margin: 0px;
 		}
 	}

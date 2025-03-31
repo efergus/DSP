@@ -4,7 +4,7 @@
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
-	import { span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
+	import { span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
 	import Button from '../input/Button.svelte';
 	import AudioFileInput from './AudioFileInput.svelte';
 	import PlayerComponent from './PlayerComponent.svelte';
@@ -12,42 +12,37 @@
 
 	let {
 		data = $bindable(new SampleData()),
+		filteredData,
 		span = $bindable(span2d(0, 1, -1, 1)),
-		limits,
-		minDuration,
-		onData,
-		onMouse
+		onData
 	}: {
 		data?: SampleData;
+		filteredData?: SampleData;
 		span?: Span2D;
-		minDuration?: number;
-		limits?: Span2D;
 		onData?: (sample: SampleData) => void;
-		onMouse?: () => void;
 	} = $props();
-
-	let effectiveMinDuration = $derived(minDuration ?? 1 / data.samplerate);
-	let effectiveLimits = $derived(
-		limits ?? span2d(0, Math.max(data.duration(), span.x.size(), 1), -100, 100)
-	);
 </script>
 
 <div>
-	<PlayerComponent {data} bind:span>
-		<AudioFileInput
-			onData={(sample) => {
-				data = sample;
-				onData?.(sample);
-			}}
-		/>
+	<PlayerComponent {data} {filteredData} bind:span>
+		{#snippet before()}
+			<AudioFileInput
+				onData={(sample) => {
+					data = sample;
+					onData?.(sample);
+					const sampleSpan = sample.span();
+					const vertical = Math.max(Math.abs(sampleSpan.y.min), Math.abs(sampleSpan.y.max));
+					span = span2dFromSpans(sampleSpan.x, span1d(-vertical, vertical));
+				}}
+			/>
 
-		<Recorder
-			onData={(sample) => {
-				data = sample;
-				onData?.(sample);
-			}}
-		/>
-
+			<Recorder
+				onData={(sample) => {
+					data = sample;
+					onData?.(sample);
+				}}
+			/>
+		{/snippet}
 		<div class="spacer"></div>
 
 		<Button

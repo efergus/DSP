@@ -10,29 +10,36 @@
 	import { onMount } from 'svelte';
 	import { axisLines, axisLinesLog, AxisScale } from '$lib/audio/axes';
 	import { point, type Point } from '$lib/math/point';
+	import { drawAxes } from '$lib/graphics/axes';
 
 	let {
 		data,
+		filteredData,
 		span = $bindable(span2d(0, 1, -1, 1)),
 		width = 500,
-		height = 300,
+		height = 200,
 		cursor = 0,
 		strokeWidth = 1,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
 		scale = AxisScale.Linear,
-		axisSize = 24,
+		axisSizeX = 36,
+		axisSizeY = 48,
 		stairstep = false,
 		onZoom,
 		onMove
 	}: {
 		data: Sample;
+		filteredData?: Sample;
 		span?: Span2D;
 		samplerate?: number;
 		width?: number;
 		height?: number;
 		cursor?: number;
 		strokeWidth?: number;
-		axisSize?: number;
+		// size of the x axis (takes up vertical space)
+		axisSizeX?: number;
+		// size of the y axis (takes up horizontal space)
+		axisSizeY?: number;
 		scale?: AxisScale;
 		stairstep?: boolean;
 		onZoom?: (delta: { x: number; y: number }, pos: Point) => void;
@@ -43,9 +50,9 @@
 
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
-	let margin = $state(point());
+	let padding = $state(point());
 	const logScale = $derived(scale === AxisScale.Log && span.y.start > 0);
-	const screenSpan = $derived(span2d(axisSize, width, height - axisSize, 0));
+	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
 	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
 	const screenMapY = $derived(
 		logScale
@@ -54,92 +61,37 @@
 			: (value: number) => span.y.remap(value, screenSpan.y)
 	);
 
-	const isInVerticalAxis = $derived((pos: Point) => pos.x <= axisSize && pos.y < height - axisSize);
-	const isInHorizontalAxis = $derived(
-		(pos: Point) => pos.x > axisSize && pos.y >= height - axisSize
+	const isInVerticalAxis = $derived(
+		(pos: Point) => pos.x <= axisSizeY && pos.y < height - axisSizeX
 	);
-	const isInBody = $derived((pos: Point) => pos.x > axisSize && pos.y < height - axisSize);
+	const isInHorizontalAxis = $derived(
+		(pos: Point) => pos.x > axisSizeY && pos.y >= height - axisSizeX
+	);
+	const isInBody = $derived((pos: Point) => pos.x > axisSizeY && pos.y < height - axisSizeX);
 
-	const drawAxis = (context: CanvasRenderingContext2D, span: Span1D, vertical: boolean) => {
-		context.save();
-		// clip rectangle
-		context.beginPath();
-		if (vertical) {
-			context.rect(0, 0, width, height - axisSize);
-			context.textBaseline = 'top';
-		} else {
-			context.rect(axisSize, 0, width - axisSize, height);
-			context.textBaseline = 'bottom';
-		}
-		context.clip();
-
-		const maxDepth = 2.2;
-		const maxTextDepth = 1.3;
-		const maxFullDepth = 1.3;
-		const axis = axisLines(span, maxDepth);
-		context.lineWidth = 1;
-		const layers = Array.from(axis);
-		for (let index = layers.length - 1; index >= 0; index--) {
-			const layer = layers[index];
-			context.beginPath();
-			const textOffset = 4;
-			const textSize = Math.floor(5 * (1 + layer.weight));
-			const level = 255 - layer.weight * 128;
-			const color = `rgb(${level}, ${level}, ${level})`;
-			context.strokeStyle = color;
-			const textLevel = 255 - Math.max(0, 2 - 2 * (layer.depth / maxTextDepth) ** 2) * 255;
-			const textColor = `rgb(${textLevel}, ${textLevel}, ${textLevel})`;
-			context.fillStyle = textColor;
-			context.font = `${textSize}px sans-serif`;
-			if (vertical) {
-				const extent = layer.depth < maxFullDepth ? width : axisSize;
-				for (const tick of layer.values) {
-					const pos = Math.floor(screenMapY(tick)) + 0.5;
-					context.moveTo((1 - layer.weight) * axisSize, pos);
-					context.lineTo(extent, pos);
-					if (layer.depth <= maxTextDepth) {
-						context.fillText(layer.format(tick), 0, pos + textOffset);
-					}
-				}
-			} else {
-				const start = layer.depth < maxFullDepth ? 0 : height - axisSize;
-				for (const tick of layer.values) {
-					const pos = Math.floor(screenMapX(tick)) + 0.5;
-					context.moveTo(pos, start);
-					context.lineTo(pos, height - (1 - layer.weight) * axisSize);
-					if (layer.depth <= maxTextDepth) {
-						context.fillText(layer.format(tick), pos + textOffset, height);
-					}
-				}
-			}
-			context.stroke();
-		}
-		context.restore();
-
-		// separator line
-		context.beginPath();
-		context.fillStyle = 'black';
-		if (vertical) {
-			context.rect(axisSize - 1, 0, 1, height);
-		} else {
-			context.rect(0, height - axisSize, width, 1);
-		}
-		context.fill();
+	type WaveformOptions = {
+		color?: string;
+		weight?: number;
 	};
 
-	const drawWaveform = (context: CanvasRenderingContext2D, sample: Sample) => {
+	const drawWaveform = (
+		context: CanvasRenderingContext2D,
+		sample: Sample,
+		options: WaveformOptions = {}
+	) => {
+		const { color = 'black', weight = 1 } = options;
 		context.save();
 		context.beginPath();
-		context.rect(axisSize, 0, width - axisSize, height - axisSize);
+		context.rect(axisSizeY, 0, width - axisSizeY, height - axisSizeX);
 		context.clip();
 
 		context.beginPath();
-		context.strokeStyle = 'black';
-		context.lineWidth = strokeWidth;
-		context.fillStyle = 'black';
+		context.strokeStyle = color;
+		context.lineWidth = strokeWidth * weight;
+		context.fillStyle = color;
 		context.lineJoin = 'round';
 
-		const stroke = strokeWidth / 2;
+		const stroke = (strokeWidth * weight) / 2;
 
 		const sampleStart = span.x.start * samplerate;
 		const sampleEnd = span.x.end * samplerate;
@@ -206,18 +158,22 @@
 		context.restore();
 	};
 
-	const draw = (context: CanvasRenderingContext2D, sample: Sample) => {
+	const draw = (context: CanvasRenderingContext2D, sample: Sample, filtered?: Sample) => {
 		const rect = canvas.getBoundingClientRect();
-		margin = point(Math.floor(rect.x) - rect.x, Math.floor(rect.y) - rect.y);
+		padding = point(Math.floor(rect.x) - rect.x, Math.floor(rect.y) - rect.y);
 		// console.log(rect);
 
 		context.fillStyle = 'rgb(255 255 255)';
 		context.fillRect(0, 0, width, height);
 
-		drawAxis(context, span.x, false);
-		drawAxis(context, span.y, true);
+		// drawAxis(context, span.x, false);
+		// drawAxis(context, span.y, true);
+		drawAxes(context, { span, sizeX: axisSizeX, sizeY: axisSizeY });
 
 		drawWaveform(context, sample);
+		if (filtered) {
+			drawWaveform(context, filtered, { color: 'red', weight: 2 });
+		}
 	};
 
 	onMount(() => {
@@ -227,7 +183,7 @@
 			return;
 		}
 		const drawData = () => {
-			draw(context, data);
+			draw(context, data, filteredData);
 			requestAnimationFrame(drawData);
 		};
 		requestAnimationFrame(drawData);
@@ -236,9 +192,10 @@
 
 <canvas
 	bind:this={canvas}
+	style:width
+	style:height
 	{width}
 	{height}
-	style={`width: ${width}px; height: ${height}px; padding: ${margin.x}px ${margin.y}px`}
 	onwheel={(e) => {
 		e.preventDefault();
 		const shiftKey = e.shiftKey;

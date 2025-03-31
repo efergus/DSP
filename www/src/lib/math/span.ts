@@ -45,6 +45,10 @@ export class Span1D {
         return value / this.size() * to.size();
     }
 
+    remapClamped(value: number, to: Span1D = UNIT_SPAN1): number {
+        return to.clamp(this.remap(value, to));
+    }
+
     equals(span: Span1D): boolean {
         return this.start === span.start && this.end === span.end;
     }
@@ -55,6 +59,10 @@ export class Span1D {
 
     center(): number {
         return (this.end + this.start) / 2;
+    }
+
+    clamp(value: number): number {
+        return Math.max(this.min, Math.min(this.max, value));
     }
 }
 
@@ -69,6 +77,18 @@ export class Span2D {
             new Span1D(minX, maxX),
             new Span1D(minY, maxY)
         );
+    }
+
+    static fromSpans(x: Span1D, y: Span1D): Span2D {
+        return new Span2D(x, y);
+    }
+
+    get width(): number {
+        return this.x.size();
+    }
+
+    get height(): number {
+        return this.y.size();
     }
 
     move(x: number, y: number): Span2D {
@@ -93,17 +113,24 @@ export class Span2D {
         );
     }
 
-    remap(point: Point, to: Span2D): Point {
+    remap(point: Point, to: Span2D = UNIT_SPAN2): Point {
         return new Point(
             this.x.remap(point.x, to.x),
             this.y.remap(point.y, to.y)
         );
     }
 
-    remapSize(point: Point, to: Span2D): Point {
+    remapSize(point: Point, to: Span2D = UNIT_SPAN2): Point {
         return new Point(
             this.x.remapSize(point.x, to.x),
             this.y.remapSize(point.y, to.y)
+        );
+    }
+
+    remapClamped(point: Point, to: Span2D = UNIT_SPAN2): Point {
+        return new Point(
+            this.x.remapClamped(point.x, to.x),
+            this.y.remapClamped(point.y, to.y)
         );
     }
 
@@ -128,6 +155,10 @@ export class Span2D {
 
     size(): Point {
         return new Point(this.x.size(), this.y.size());
+    }
+
+    clamp(point: Point): Point {
+        return new Point(this.x.clamp(point.x), this.y.clamp(point.y));
     }
 }
 

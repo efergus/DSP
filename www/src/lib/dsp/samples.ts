@@ -2,11 +2,11 @@ import { SampleData } from "$lib/audio/sample";
 import { complex_polar } from "./complex";
 import { context } from "./dsp";
 
-export const square_sample = (freq = 440, samplerate = 44100, length?: number) => {
+export const squareSample = (freq = 440, samplerate = 44100, length?: number, scale = 1) => {
     length = length ?? samplerate * 4;
     let res = new Float32Array(length);
     for (let i = 0; i < length; i++) {
-        res[i] = Math.sin(2 * Math.PI * freq * i / samplerate) >= 0 ? 1 : -1;
+        res[i] = (((freq * i) % samplerate) >= samplerate / 2) ? scale : -scale;
     }
     return new SampleData(res, samplerate);
 };

@@ -2,18 +2,24 @@
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
-	import { whiteNoiseSample } from '$lib/dsp/samples';
+	import { squareSample } from '$lib/dsp/samples';
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
 	import { Span2D, span2d } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
-	const initialSample = whiteNoiseSample(DEFAULT_AUDIO_SAMPLERATE * 4);
+	const initialDuration = 0.5;
+	const initialSample = squareSample(
+		DEFAULT_AUDIO_SAMPLERATE / 10,
+		DEFAULT_AUDIO_SAMPLERATE,
+		DEFAULT_AUDIO_SAMPLERATE * initialDuration,
+		0.8
+	);
 	let data: SampleData = $state(initialSample);
 	let filteredData: SampleData = $state(initialSample);
 
-	let window = 0.8;
+	const window = initialDuration / 100;
 	let span = $state(span2d(0, window, -1, 1));
 	const minDuration = 1 / DEFAULT_AUDIO_SAMPLERATE;
 	let effectiveLimits = $state(span2d(0, window, -100, 100));
@@ -25,11 +31,11 @@
 				let window = span.x.size();
 				// If we start a new sample with a large span, shrink it to fit better
 				if (duration * 2 < window) {
-					window = Math.max(1, duration * 2);
+					window = Math.max(1, duration + window * 0.4);
 				}
 				const start = Math.max(0, duration - window);
 				span = span2d(start, start + window, -1, 1);
-				effectiveLimits = span2d(0, Math.max(data.duration(), window, 1), -100, 100);
+				effectiveLimits = span2d(0, Math.max(duration * 1.2, window), -100, 100);
 				lastDuration = duration;
 			}
 			requestAnimationFrame(updateSpan);

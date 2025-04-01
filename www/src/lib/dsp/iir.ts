@@ -1,6 +1,5 @@
-import { polynomial_with_roots, s2z_bilinear } from "$lib/audio/filter";
 import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
-import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_phase, complex_phase_2, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
+import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_norm2, complex_phase, complex_phase_2, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
 
 export const ZERO_STATE = 0;
 export const POLE_STATE = 1;
@@ -401,4 +400,72 @@ export function filterRoots(filter: IirDigital): Root[] {
             }))
         )
         .filter((root) => root.val.im >= 0);
+}
+
+
+function convolve_generic<T, U = T>(a: T[], b: T[], add: (a: U, b: U) => U, mul: (a: T, b: T) => U) {
+    let res = new Array(a.length + b.length - 1).fill(null);
+
+    for (let o_idx = 0; o_idx < res.length; o_idx++) {
+        for (let k_idx = Math.max(o_idx - a.length + 1, 0); k_idx <= o_idx && k_idx < b.length; k_idx++) {
+            let val = mul(a[o_idx - k_idx], b[k_idx]);
+            if (res[o_idx] !== null) {
+                val = add(res[o_idx], val);
+            }
+            res[o_idx] = val;
+        }
+    }
+    return res;
+}
+
+type Polynomial<T = number> = T[];
+
+// polynomial multiplication is a convolution
+// that also means the order of the arrays (high or low degree first)
+// does not matter as long as it is consistent
+// Explanation:
+// (x + 0) * (x + 2) => (x^2 + 2x + 0)
+// [1, 0] & [1, 2] => (1, 2, 0)
+// i.e. x (shiftted impulse) convolved with data shifts the data
+export function mul_polynomials(a: Polynomial, b: Polynomial) {
+    return convolve_generic(a, b, (a, b) => a + b, (a, b) => a * b);
+}
+
+export function mul_complex_polynomials(a: Polynomial<Complex>, b: Polynomial<Complex>) {
+    return convolve_generic(a, b, complex_add, complex_mul);
+}
+
+export function polynomial_with_conjugate_roots(complex_roots: Complex[], real_roots: number[] = []) {
+    let reals = real_roots.map((x) => [1, -x]).concat(complex_roots.map((x) => [1, -2 * x.re, complex_norm2(x)]));
+    let res = reals.reduce((acc, val) => {
+        const res = mul_polynomials(acc, val);
+        return res;
+    }, [1]);
+    return res;
+}
+
+export function polynomial_with_roots(roots: Complex[]) {
+    // (x - root1)*(x - root2)...
+    let parts = roots.map((root) => [complex(1), complex_mul_scalar(root, -1)]);
+    let res = parts.reduce((acc, val) => {
+        const res = mul_complex_polynomials(acc, val);
+        return res;
+    }, [complex(1)]);
+    return res;
+}
+
+export function s2z_bilinear(s: Complex, T = 1, freq = 0) {
+    let coeffecient = freq > 0 ? Math.tan(freq * T / 2) / freq : T / 2;
+    return complex_div(
+        complex_add(complex(1), complex_mul_scalar(s, coeffecient)),
+        complex_sub(complex(1), complex_mul_scalar(s, coeffecient))
+    )
+}
+
+export function z2s_bilinear(z: Complex, T = 1, freq = 0) {
+    let coeffecient = freq > 0 ? freq / Math.tan(freq * T / 2) : 2 / T;
+    return complex_mul_scalar(complex_div(
+        complex_sub(z, complex(1)),
+        complex_add(z, complex(1))
+    ), coeffecient)
 }

@@ -81,6 +81,7 @@
 		options: WaveformOptions = {}
 	) => {
 		const { color = 'black', weight = 1 } = options;
+		const stroke = strokeWidth * weight;
 		context.save();
 		context.beginPath();
 		context.rect(axisSizeY, 0, width - axisSizeY, height - axisSizeX);
@@ -88,11 +89,11 @@
 
 		context.beginPath();
 		context.strokeStyle = color;
-		context.lineWidth = strokeWidth * weight;
+		context.lineWidth = stroke;
 		context.fillStyle = color;
 		context.lineJoin = 'round';
 
-		const stroke = (strokeWidth * weight) / 2;
+		const strokeHalf = stroke / 2;
 
 		const sampleStart = span.x.start * samplerate;
 		const sampleEnd = span.x.end * samplerate;
@@ -105,6 +106,8 @@
 			context.lineWidth = 1;
 
 			const chunkStride = sampleSpan / width;
+			let lastMin = sample.get(0);
+			let lastMax = lastMin;
 			for (let chunk = 0; chunk < width; chunk++) {
 				const base = Math.floor(screenSpan.x.remap(chunk, span.x) * samplerate);
 				if (base < 0 || base >= sample.length) {
@@ -119,11 +122,14 @@
 					max = Math.max(max, val);
 				}
 
-				const mappedMin = screenMapY(min);
-				const mappedMax = screenMapY(max);
+				// always span to min/max of last chunk to avoid gaps
+				const mappedMin = screenMapY(Math.min(lastMin, min));
+				const mappedMax = screenMapY(Math.max(lastMax, max));
+				lastMin = min;
+				lastMax = max;
 				// mappedMax is the top of the rect
-				const rectY = mappedMax - stroke;
-				const rectH = mappedMin - mappedMax + stroke;
+				const rectY = mappedMax - strokeHalf;
+				const rectH = mappedMin - mappedMax + strokeHalf;
 				context.fillRect(chunk, rectY, 1, rectH);
 			}
 		} else {

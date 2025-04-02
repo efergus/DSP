@@ -36,7 +36,6 @@
 	const sampleSize = 512;
 	const fftSize = 1024;
 	const overlap = 256;
-	const yLimits = span1d(0, 0.5);
 
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
@@ -53,6 +52,7 @@
 
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
+	const yLimits = $derived(span1d(0, samplerate / 2));
 
 	const isInVerticalAxis = $derived(
 		(pos: Point) => pos.x <= axisSizeY && pos.y < height - axisSizeX
@@ -124,7 +124,7 @@
 				if (!span.y.contains(pos.y)) {
 					continue;
 				}
-				const frequencyY = Math.floor(pos.y * fftSize);
+				const frequencyY = Math.floor((pos.y * fftSize) / samplerate);
 				const value = frequencyData[frequencyX][frequencyY];
 				const mappedValue = logScale ? Math.log(value) : value;
 				const mapped = Math.max(0, Math.floor(range.remap(mappedValue, mapping)));
@@ -178,10 +178,12 @@
 	{height}
 	onwheel={(e) => {
 		e.preventDefault();
-		span = span2dFromSpans(
-			span.x,
-			span.y.scale(Math.exp(-e.deltaY / 100), mappedMousePos.y).intersect(yLimits)
-		);
+		const scale = Math.exp(-e.deltaY / 100);
+		if (isInHorizontalAxis(localMousePos)) {
+			span = span2dFromSpans(span.x.scale(scale, mappedMousePos.x), span.y);
+		} else {
+			span = span2dFromSpans(span.x, span.y.scale(scale, mappedMousePos.y).intersect(yLimits));
+		}
 		updateSpectrogramThrottled(span, data.updateVersion);
 	}}
 	{...mouse(({ pos, delta, down }) => {

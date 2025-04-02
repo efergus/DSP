@@ -123,14 +123,14 @@
 				}
 
 				// always span to min/max of last chunk to avoid gaps
-				const mappedMin = screenMapY(Math.min(lastMin, min));
-				const mappedMax = screenMapY(Math.max(lastMax, max));
+				const mappedMin = screenMapY(Math.min(lastMax, min));
+				const mappedMax = screenMapY(Math.max(lastMin, max));
 				lastMin = min;
 				lastMax = max;
 				// mappedMax is the top of the rect
 				const rectY = mappedMax - strokeHalf;
 				const rectH = mappedMin - mappedMax + strokeHalf;
-				context.fillRect(chunk, rectY, 1, rectH);
+				context.fillRect(chunk, rectY, stroke, rectH);
 			}
 		} else {
 			if (stairstep) {
@@ -150,7 +150,7 @@
 					const y2 = Math.floor(screenMapY(value)) + 0.5;
 					const minY = Math.min(y1, y2);
 					const maxY = Math.max(y1, y2);
-					context.fillRect(index, minY, 1, Math.max(1, maxY - minY));
+					context.fillRect(index, minY, stroke, Math.max(1, maxY - minY));
 					lastValue = value;
 				}
 			} else {

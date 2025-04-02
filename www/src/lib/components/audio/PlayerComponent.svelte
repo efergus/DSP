@@ -27,7 +27,7 @@
 		before?: Snippet;
 	} = $props();
 
-	let spectrumVerticalSpan = $state(span1d(0, 0.5));
+	let spectrumVerticalSpan = $state(span1d(0, data.samplerate / 2));
 </script>
 
 <div class="stack">

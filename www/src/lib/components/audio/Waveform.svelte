@@ -48,6 +48,7 @@
 
 	let canvas: HTMLCanvasElement;
 
+	let styleSize = $state(point(width, height));
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
 	let padding = $state(point());
@@ -177,6 +178,9 @@
 	};
 
 	onMount(() => {
+		const pixelRatio = window.devicePixelRatio;
+		styleSize = point(width * pixelRatio, height * pixelRatio);
+
 		const context = canvas.getContext('2d');
 		if (!context) {
 			console.warn('No context!');
@@ -192,17 +196,36 @@
 
 <canvas
 	bind:this={canvas}
-	style:width
-	style:height
+	style:width={`${styleSize.x}px`}
+	style:height={`${styleSize.y}px`}
 	{width}
 	{height}
 	onwheel={(e) => {
 		e.preventDefault();
 		const shiftKey = e.shiftKey;
-		if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
+		const ctrlKey = e.ctrlKey;
+		const mode = e.deltaMode; // 0: pixels, 1: lines, 2: pages
+		const modeScale = [1, 10, 100];
+		const deltaY = (-e.deltaY / 100) * modeScale[mode];
+		if (isInHorizontalAxis(localMousePos) && shiftKey) {
+			// shift & horizontal => scroll
+			const distance = (deltaY * span.x.size()) / 2;
+			if (onMove) {
+				onMove(point(distance, 0), mappedMousePos);
+			} else {
+				span = span2dFromSpans(span.x.move(distance), span.y);
+			}
+		} else if (isInVerticalAxis(localMousePos) && shiftKey) {
+			// shift & vertical => scroll
+			const distance = (deltaY * span.y.size()) / 2;
+			if (onMove) {
+				onMove(point(0, distance), mappedMousePos);
+			} else {
+				span = span2dFromSpans(span.x, span.y.move(distance));
+			}
+		} else if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
 			const yPos = mappedMousePos.y;
-			const deltaY = e.deltaY;
-			const scaleY = Math.exp(-deltaY / 100);
+			const scaleY = Math.exp(deltaY);
 			if (onZoom) {
 				onZoom({ x: 1, y: deltaY }, mappedMousePos);
 			} else {
@@ -210,8 +233,7 @@
 			}
 		} else {
 			const xPos = mappedMousePos.x;
-			const deltaY = e.deltaY;
-			const scaleX = Math.exp(-deltaY / 100);
+			const scaleX = Math.exp(deltaY);
 			if (onZoom) {
 				onZoom({ x: deltaY, y: 1 }, mappedMousePos);
 			} else {
@@ -224,6 +246,12 @@
 		mappedMousePos = screenSpan.remap(pos, span);
 		if (down) {
 			const mappedDelta = screenSpan.remapSize(delta, span);
+			if (isInHorizontalAxis(localMousePos)) {
+				mappedDelta.y = 0;
+			}
+			if (isInVerticalAxis(localMousePos)) {
+				mappedDelta.x = 0;
+			}
 			if (onMove) {
 				onMove(mappedDelta, mappedMousePos);
 			} else {

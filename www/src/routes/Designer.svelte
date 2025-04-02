@@ -9,7 +9,7 @@
 	import { Span2D, span2d } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
-	const initialDuration = 0.5;
+	const initialDuration = 2;
 	const initialSample = squareSample(
 		DEFAULT_AUDIO_SAMPLERATE / 100,
 		DEFAULT_AUDIO_SAMPLERATE,
@@ -17,21 +17,26 @@
 		0.8
 	);
 	let data: SampleData = $state(initialSample);
+	let lastData: SampleData = $state(initialSample);
 	let filteredData: SampleData = $state(initialSample);
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
 	const minDuration = 1 / DEFAULT_AUDIO_SAMPLERATE;
-	let effectiveLimits = $state(span2d(0, window, -100, 100));
+	let effectiveLimits = $state(span2d(0, initialDuration, -100, 100));
 	onMount(() => {
 		let lastDuration = data.duration();
 		const updateSpan = () => {
 			const duration = data.duration();
-			if (duration !== lastDuration) {
+			if (data !== lastData) {
+				lastData = data;
+				span = span2d(0, Math.min(span.x.size(), data.duration()), -1, 1);
+				effectiveLimits = span2d(0, data.duration(), -100, 100);
+			} else if (duration > lastDuration) {
 				let window = Math.min(span.x.size(), duration);
 				const start = Math.max(0, duration - window);
 				span = span2d(start, start + window, -1, 1);
-				effectiveLimits = span2d(0, Math.max(duration * 1.2, window), -100, 100);
+				effectiveLimits = span2d(0, Math.max(duration, window), -100, 100);
 				lastDuration = duration;
 			}
 			requestAnimationFrame(updateSpan);
@@ -69,6 +74,8 @@
 			span = newSpan.intersect(effectiveLimits);
 		}
 	};
+
+	$inspect(effectiveLimits);
 </script>
 
 <div>

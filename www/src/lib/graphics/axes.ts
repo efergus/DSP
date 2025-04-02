@@ -95,7 +95,7 @@ export function drawAxes(context: CanvasRenderingContext2D, options: AxesOptions
             const exteriorColor = `rgb(${exteriorLevel}, ${exteriorLevel}, ${exteriorLevel})`;
 
             // interior (fewer visible) line styling
-            const interiorLevel = level256(layer.depth, maxInteriorDepth);
+            const interiorLevel = level256(Math.max(layer.depth, maxInteriorDepth * 0.9), maxInteriorDepth);
             const interiorColor = `rgb(${interiorLevel}, ${interiorLevel}, ${interiorLevel})`;
 
             // text styling

@@ -64,6 +64,10 @@ export class Span1D {
     clamp(value: number): number {
         return Math.max(this.min, Math.min(this.max, value));
     }
+
+    contains(value: number): boolean {
+        return value >= this.min && value <= this.max;
+    }
 }
 
 export class Span2D {
@@ -159,6 +163,10 @@ export class Span2D {
 
     clamp(point: Point): Point {
         return new Point(this.x.clamp(point.x), this.y.clamp(point.y));
+    }
+
+    contains(point: Point): boolean {
+        return this.x.contains(point.x) && this.y.contains(point.y);
     }
 }
 

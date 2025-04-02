@@ -32,21 +32,17 @@
 
 <div class="stack">
 	<div class="audio">
-		<div style:border-right={'1px solid silver'}>
-			<Waveform {data} {filteredData} bind:span height={250} />
-		</div>
-		<div style:border-left={'1px solid silver'}>
-			<Spectrogram
-				height={250}
-				{data}
-				logScale
-				bind:span={() => span2dFromSpans(span.x, spectrumVerticalSpan),
-				(newSpan) => {
-					spectrumVerticalSpan = newSpan.y;
-					span = span2dFromSpans(newSpan.x, span.y);
-				}}
-			/>
-		</div>
+		<Waveform {data} {filteredData} bind:span height={250} />
+		<Spectrogram
+			height={250}
+			{data}
+			logScale
+			bind:span={() => span2dFromSpans(span.x, spectrumVerticalSpan),
+			(newSpan) => {
+				spectrumVerticalSpan = newSpan.y;
+				span = span2dFromSpans(newSpan.x, span.y);
+			}}
+		/>
 	</div>
 	<div class="buttons">
 		{@render before?.()}
@@ -67,6 +63,7 @@
 	.stack {
 		display: flex;
 		flex-direction: column;
+		max-width: min-content;
 
 		> :not(:last-child) {
 			border-bottom: none;
@@ -75,6 +72,7 @@
 
 	.audio {
 		display: flex;
+		flex-direction: column;
 		justify-content: space-between;
 		border: 1px solid black;
 	}

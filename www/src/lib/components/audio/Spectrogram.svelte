@@ -2,9 +2,12 @@
 	import type { SampleData } from '$lib/audio/sample';
 	import { context } from '$lib/dsp/dsp';
 	import { apply_hann_window } from '$lib/dsp/window';
-	import { debounce } from '$lib/input/debounce';
-	import { point } from '$lib/math/point';
-	import { span1d, span2d, type Span2D } from '$lib/math/span';
+	import { drawAxes } from '$lib/graphics/axes';
+	import { debounce, throttle } from '$lib/input/debounce';
+	import { mouse } from '$lib/input/mouse';
+	import { clamp } from '$lib/math/clamp';
+	import { Point, point } from '$lib/math/point';
+	import { span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
 	let {
@@ -13,6 +16,8 @@
 		width = 500,
 		height = 200,
 		scale = 1,
+		axisSizeX = 36,
+		axisSizeY = 48,
 		cursor = 0,
 		logScale = false,
 		onwheel = () => {}
@@ -22,6 +27,8 @@
 		width?: number;
 		height?: number;
 		scale?: number;
+		axisSizeX?: number;
+		axisSizeY?: number;
 		cursor?: number;
 		logScale?: boolean;
 		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
@@ -29,10 +36,12 @@
 	const sampleSize = 512;
 	const fftSize = 1024;
 	const overlap = 256;
+	const yLimits = span1d(0, 0.5);
 
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
-	const screenSpan = $derived(span2d(0, width, 0, height));
+	const screenSpan = $derived(span2d(axisSizeY, width, axisSizeX, height));
+	let styleSize = $state(point(width, height));
 	let canvas: HTMLCanvasElement;
 	let currentSample: SampleData = $state(data);
 	let frequencyData: Float32Array[] = $state([]);
@@ -41,6 +50,17 @@
 	let drawn: Span2D | null = $state(null);
 	let fft_context = context();
 	let updateVersion = $state(-1);
+
+	let localMousePos = $state(point());
+	let mappedMousePos = $state(point());
+
+	const isInVerticalAxis = $derived(
+		(pos: Point) => pos.x <= axisSizeY && pos.y < height - axisSizeX
+	);
+	const isInHorizontalAxis = $derived(
+		(pos: Point) => pos.x > axisSizeY && pos.y >= height - axisSizeX
+	);
+	const isInBody = $derived((pos: Point) => pos.x > axisSizeY && pos.y < height - axisSizeX);
 
 	const updateSpectrogramData = () => {
 		// update spectrogram data with any new data in the sample
@@ -69,12 +89,10 @@
 		}
 	};
 
-	const drawSpectrogramData = () => {
-		const context = canvas.getContext('2d');
-		if (!context) {
-			return;
-		}
-		context.clearRect(0, 0, width, height);
+	const drawSpectrogramData = (context: CanvasRenderingContext2D) => {
+		const width = screenSpan.x.size();
+		const height = screenSpan.y.size();
+		const localScreenSpan = span2d(0, width, 0, height);
 
 		const image = context.createImageData(width, height);
 		const setPixel = (x: number, y: number, r: number, g: number, b: number) => {
@@ -97,40 +115,50 @@
 		let mapping = span1d(0, 256);
 		for (let x = 0; x < width; x++) {
 			for (let y = 0; y < height; y++) {
-				const pos = screenSpan.remap(point(x, y), span);
-				const frequencyX = Math.floor((pos.x * samplerate) / stride);
-				const frequencyY = Math.floor((pos.y * fftSize) / 2);
-				if (
-					frequencyX < 0 ||
-					frequencyX >= frequencyData.length ||
-					frequencyY < 0 ||
-					frequencyY >= frequencyData[frequencyX].length
-				) {
+				const pos = localScreenSpan.remap(point(x, y), span);
+				const frequencyX = clamp(
+					Math.floor((pos.x * samplerate) / stride),
+					0,
+					frequencyData.length - 1
+				);
+				if (!span.y.contains(pos.y)) {
 					continue;
 				}
+				const frequencyY = Math.floor(pos.y * fftSize);
 				const value = frequencyData[frequencyX][frequencyY];
 				const mappedValue = logScale ? Math.log(value) : value;
 				const mapped = Math.max(0, Math.floor(range.remap(mappedValue, mapping)));
 				setPixel(x, y, mapped, mapped, mapped);
 			}
 		}
-		context.putImageData(image, 0, 0);
+		context.putImageData(image, axisSizeY, 0);
 		updateVersion = data.updateVersion;
 		drawn = span;
 	};
 
-	const updateSpectrogram = debounce((span: Span2D, updateVersion: number) => {
+	const updateSpectrogramThrottled = throttle((span: Span2D, updateVersion: number) => {
+		const context = canvas.getContext('2d');
+		if (!context) {
+			return;
+		}
 		if (span !== drawn || updateVersion !== data.updateVersion) {
+			context.clearRect(0, 0, width, height);
+			drawAxes(context, { span, sizeX: axisSizeX, sizeY: axisSizeY });
 			updateSpectrogramData();
-			drawSpectrogramData();
+			drawSpectrogramData(context);
 		}
 	}, 100);
 
+	const updateSpectrogramDebounced = debounce(updateSpectrogramThrottled, 100);
+
 	$effect(() => {
-		updateSpectrogram(span, data.updateVersion);
+		updateSpectrogramDebounced(span, data.updateVersion);
 	});
 
 	onMount(() => {
+		const pixelRatio = window.devicePixelRatio;
+		styleSize = point(width * pixelRatio, height * pixelRatio);
+
 		const updateSpectrogramLoop = () => {
 			if (drawn && data.updateVersion !== updateVersion) {
 				drawn = null;
@@ -144,9 +172,37 @@
 
 <canvas
 	bind:this={canvas}
-	style:width
-	style:height
+	style:width={`${styleSize.x}px`}
+	style:height={`${styleSize.y}px`}
 	{width}
 	{height}
-	onwheel={(e) => onwheel({ x: e.deltaX, y: e.deltaY }, e)}
+	onwheel={(e) => {
+		e.preventDefault();
+		span = span2dFromSpans(
+			span.x,
+			span.y.scale(Math.exp(-e.deltaY / 100), mappedMousePos.y).intersect(yLimits)
+		);
+		updateSpectrogramThrottled(span, data.updateVersion);
+	}}
+	{...mouse(({ pos, delta, down }) => {
+		localMousePos = pos;
+		mappedMousePos = screenSpan.remap(pos, span);
+		if (down) {
+			const mappedDelta = screenSpan.remapSize(delta, span);
+			if (isInHorizontalAxis(localMousePos)) {
+				mappedDelta.y = 0;
+			}
+			if (isInVerticalAxis(localMousePos)) {
+				mappedDelta.x = 0;
+			}
+			if (span.y.max + mappedDelta.y > yLimits.max) {
+				mappedDelta.y = yLimits.max - span.y.max;
+			}
+			if (span.y.min + mappedDelta.y < yLimits.min) {
+				mappedDelta.y = yLimits.min - span.y.min;
+			}
+			span = span.move(-mappedDelta.x, mappedDelta.y);
+			updateSpectrogramThrottled(span, data.updateVersion);
+		}
+	})}
 ></canvas>

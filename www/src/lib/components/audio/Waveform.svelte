@@ -11,14 +11,15 @@
 	import { axisLines, axisLinesLog, AxisScale } from '$lib/audio/axes';
 	import { point, type Point } from '$lib/math/point';
 	import { drawAxes } from '$lib/graphics/axes';
+	import LongCursor from '$lib/icons/LongCursor.svelte';
 
 	let {
 		data,
 		filteredData,
 		span = $bindable(span2d(0, 1, -1, 1)),
+		cursor = $bindable(null),
 		width = 500,
 		height = 200,
-		cursor = 0,
 		strokeWidth = 1,
 		samplerate = DEFAULT_AUDIO_SAMPLERATE,
 		scale = AxisScale.Linear,
@@ -31,10 +32,10 @@
 		data: Sample;
 		filteredData?: Sample;
 		span?: Span2D;
+		cursor?: number | null;
 		samplerate?: number;
 		width?: number;
 		height?: number;
-		cursor?: number;
 		strokeWidth?: number;
 		// size of the x axis (takes up vertical space)
 		axisSizeX?: number;
@@ -53,6 +54,7 @@
 	let mappedMousePos = $state(point());
 	let padding = $state(point());
 	const logScale = $derived(scale === AxisScale.Log && span.y.start > 0);
+	const interiorScreenSpan = $derived(span2d(0, width - axisSizeY, 0, height - axisSizeX));
 	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
 	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
 	const screenMapY = $derived(
@@ -168,13 +170,10 @@
 	const draw = (context: CanvasRenderingContext2D, sample: Sample, filtered?: Sample) => {
 		const rect = canvas.getBoundingClientRect();
 		padding = point(Math.floor(rect.x) - rect.x, Math.floor(rect.y) - rect.y);
-		// console.log(rect);
 
 		context.fillStyle = 'rgb(255 255 255)';
 		context.fillRect(0, 0, width, height);
 
-		// drawAxis(context, span.x, false);
-		// drawAxis(context, span.y, true);
 		drawAxes(context, { span, sizeX: axisSizeX, sizeY: axisSizeY });
 
 		drawWaveform(context, sample);
@@ -200,71 +199,86 @@
 	});
 </script>
 
-<canvas
-	bind:this={canvas}
-	style:width={`${styleSize.x}px`}
-	style:height={`${styleSize.y}px`}
-	{width}
-	{height}
-	onwheel={(e) => {
-		e.preventDefault();
-		const shiftKey = e.shiftKey;
-		const ctrlKey = e.ctrlKey;
-		const mode = e.deltaMode; // 0: pixels, 1: lines, 2: pages
-		const modeScale = [1, 10, 100];
-		const deltaY = (-e.deltaY / 100) * modeScale[mode];
-		if (isInHorizontalAxis(localMousePos) && shiftKey) {
-			// shift & horizontal => scroll
-			const distance = (deltaY * span.x.size()) / 2;
-			if (onMove) {
-				onMove(point(distance, 0), mappedMousePos);
+<div>
+	<canvas
+		bind:this={canvas}
+		style:width={`${styleSize.x}px`}
+		style:height={`${styleSize.y}px`}
+		{width}
+		{height}
+		onwheel={(e) => {
+			e.preventDefault();
+			const shiftKey = e.shiftKey;
+			const ctrlKey = e.ctrlKey;
+			const mode = e.deltaMode; // 0: pixels, 1: lines, 2: pages
+			const modeScale = [1, 10, 100];
+			const deltaY = (-e.deltaY / 100) * modeScale[mode];
+			if (isInHorizontalAxis(localMousePos) && shiftKey) {
+				// shift & horizontal => scroll
+				const distance = (deltaY * span.x.size()) / 2;
+				if (onMove) {
+					onMove(point(distance, 0), mappedMousePos);
+				} else {
+					span = span2dFromSpans(span.x.move(distance), span.y);
+				}
+			} else if (isInVerticalAxis(localMousePos) && shiftKey) {
+				// shift & vertical => scroll
+				const distance = (deltaY * span.y.size()) / 2;
+				if (onMove) {
+					onMove(point(0, distance), mappedMousePos);
+				} else {
+					span = span2dFromSpans(span.x, span.y.move(distance));
+				}
+			} else if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
+				const yPos = mappedMousePos.y;
+				const scaleY = Math.exp(deltaY);
+				if (onZoom) {
+					onZoom({ x: 1, y: deltaY }, mappedMousePos);
+				} else {
+					span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
+				}
 			} else {
-				span = span2dFromSpans(span.x.move(distance), span.y);
+				const xPos = mappedMousePos.x;
+				const scaleX = Math.exp(deltaY);
+				if (onZoom) {
+					onZoom({ x: deltaY, y: 1 }, mappedMousePos);
+				} else {
+					span = span2dFromSpans(span.x.scale(scaleX, xPos), span.y);
+				}
 			}
-		} else if (isInVerticalAxis(localMousePos) && shiftKey) {
-			// shift & vertical => scroll
-			const distance = (deltaY * span.y.size()) / 2;
-			if (onMove) {
-				onMove(point(0, distance), mappedMousePos);
-			} else {
-				span = span2dFromSpans(span.x, span.y.move(distance));
+		}}
+		{...mouse(({ pos, delta, down }) => {
+			localMousePos = pos;
+			mappedMousePos = screenSpan.remap(pos, span);
+			cursor = mappedMousePos.x;
+			if (down) {
+				const mappedDelta = screenSpan.remapSize(delta, span);
+				if (isInHorizontalAxis(localMousePos)) {
+					mappedDelta.y = 0;
+				}
+				if (isInVerticalAxis(localMousePos)) {
+					mappedDelta.x = 0;
+				}
+				if (onMove) {
+					onMove(mappedDelta, mappedMousePos);
+				} else {
+					span = span.move(-mappedDelta.x, mappedDelta.y);
+				}
 			}
-		} else if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
-			const yPos = mappedMousePos.y;
-			const scaleY = Math.exp(deltaY);
-			if (onZoom) {
-				onZoom({ x: 1, y: deltaY }, mappedMousePos);
-			} else {
-				span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
-			}
-		} else {
-			const xPos = mappedMousePos.x;
-			const scaleX = Math.exp(deltaY);
-			if (onZoom) {
-				onZoom({ x: deltaY, y: 1 }, mappedMousePos);
-			} else {
-				span = span2dFromSpans(span.x.scale(scaleX, xPos), span.y);
-			}
-		}
-	}}
-	{...mouse(({ pos, delta, down }) => {
-		localMousePos = pos;
-		mappedMousePos = screenSpan.remap(pos, span);
-		if (down) {
-			const mappedDelta = screenSpan.remapSize(delta, span);
-			if (isInHorizontalAxis(localMousePos)) {
-				mappedDelta.y = 0;
-			}
-			if (isInVerticalAxis(localMousePos)) {
-				mappedDelta.x = 0;
-			}
-			if (onMove) {
-				onMove(mappedDelta, mappedMousePos);
-			} else {
-				span = span.move(-mappedDelta.x, mappedDelta.y);
-			}
-		}
-	})}
-></canvas>
+		})}
+	></canvas>
+	{#if cursor !== null}
+		<LongCursor
+			x={span.x.remap(cursor, interiorScreenSpan.x)}
+			width={width - axisSizeY}
+			size={8}
+			span={screenSpan}
+		/>
+	{/if}
+</div>
 
-<style></style>
+<style>
+	div {
+		position: relative;
+	}
+</style>

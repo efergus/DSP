@@ -57,6 +57,14 @@ export class Span1D {
         return Math.abs(this.end - this.start);
     }
 
+    sizeSigned(): number {
+        return this.end - this.start;
+    }
+
+    sign(): number {
+        return Math.sign(this.end - this.start);
+    }
+
     center(): number {
         return (this.end + this.start) / 2;
     }

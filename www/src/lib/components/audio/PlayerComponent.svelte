@@ -75,6 +75,8 @@
 		flex-direction: column;
 		justify-content: space-between;
 		border: 1px solid black;
+
+		gap: 6px;
 	}
 
 	.buttons {

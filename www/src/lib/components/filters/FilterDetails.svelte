@@ -7,7 +7,7 @@
 </script>
 
 <div>
-	<TimeResponse {filter} />
+	<!-- <TimeResponse {filter} /> -->
 	<FrequencyResponse {filter} decibels />
 </div>
 

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Spectrum from './Spectrum.svelte';
 	import Waveform from './OldWaveform.svelte';
-	import { phaseNoise } from '$lib/dsp/samples';
+	import { phaseNoiseSample } from '$lib/dsp/samples';
 	import type { IirDigital } from '$lib/dsp/iir';
 
 	const {
@@ -12,7 +12,7 @@
 
 	const size = 128;
 	// const noiseSample = whiteNoise(size);
-	const noiseSample = phaseNoise(size);
+	const noiseSample = phaseNoiseSample(size);
 	const filteredSample = $derived(filter.apply(noiseSample));
 </script>
 

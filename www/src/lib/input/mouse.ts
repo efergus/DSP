@@ -25,6 +25,7 @@ export type MouseState = {
     click: boolean,
     elapsed: number,
     moved: number,
+    leaveEvent: boolean,
     target: EventTarget,
     event: MouseEvent
 }
@@ -38,7 +39,7 @@ export type MouseOptions = {
 
 export type MouseStateHandler = (state: MouseState) => void;
 
-export function mouseHandler(handler: MouseStateHandler, options: MouseOptions = {}): (event: MouseEvent) => void {
+export function mouseHandler(handler: MouseStateHandler, options: MouseOptions = {}): (event: MouseEvent, leaveEvent?: boolean) => void {
     const internalState: SavedMouseState = options?.state ?? {
         moved: 0,
         down: false,
@@ -63,7 +64,7 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
         remapFn = (point: Point) => point;
     }
 
-    const wrapper = (event: MouseEvent) => {
+    const wrapper = (event: MouseEvent, leaveEvent?: boolean) => {
         const target = options.target ?? event.currentTarget as HTMLElement;
         if (!target) {
             throw new Error("No mouse target!");
@@ -122,14 +123,15 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
             elapsed: down || edgeUp ? (now - internalState.startTime) / 1000 : 0,
             moved: internalState.moved,
             target,
-            event
+            event,
+            leaveEvent: leaveEvent ?? false
         }
         handler(state);
     }
     return wrapper;
 }
 
-export function mouse(handler?: MouseStateHandler, options: MouseOptions = {}) {
+export function mouseDispatch(handler?: MouseStateHandler, options: MouseOptions = {}) {
     if (!handler) {
         return undefined;
     }
@@ -138,7 +140,7 @@ export function mouse(handler?: MouseStateHandler, options: MouseOptions = {}) {
         onmousedown: wrapper,
         onmouseup: wrapper,
         onmouseenter: wrapper,
-        onmouseleave: wrapper,
+        onmouseleave: (event: MouseEvent) => wrapper(event, true),
         onmousemove: wrapper,
         // todo: investigate touching
         // ontouchstart: wrapper,

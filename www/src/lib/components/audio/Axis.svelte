@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { axisLines } from '$lib/audio/axes';
 	import { span1d, span2d, type Span1D } from '$lib/math/span';
-	import { mouse } from '$lib/input/mouse';
+	import { mouseDispatch } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
 
 	let {
@@ -55,7 +55,7 @@
 	{viewBox}
 	stroke-linecap="round"
 	font-size="12"
-	{...mouse(
+	{...mouseDispatch(
 		(state) => {
 			mousePos = vertical ? state.pos.y : state.pos.x;
 		},

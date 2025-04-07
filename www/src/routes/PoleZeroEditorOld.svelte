@@ -7,10 +7,9 @@
 		type Complex
 	} from '$lib/dsp/complex';
 	import { addConjugates } from '$lib/dsp/iir';
-	import PoleZeroPlot, { type ComplexMouseState } from './PoleZeroPlot.svelte';
+	import PoleZeroPlot, { type ComplexMouseState } from './PoleZeroPlotOld.svelte';
 	import RootEditor from './RootEditor.svelte';
 	import type { OldRoot } from '$lib/dsp/iir';
-	import type { Span2D } from '$lib/math/span';
 
 	let {
 		roots = $bindable([]),

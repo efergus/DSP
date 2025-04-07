@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { complex, complex_conjugate, type Complex } from '$lib/dsp/complex';
-	import { Span2D, span2d } from '$lib/math/span';
+	import { span2d } from '$lib/math/span';
 	import { mouseDispatch, type MouseState } from '$lib/input/mouse';
 
 	export type ComplexMouseState = {
@@ -20,8 +20,6 @@
 		zero_size = 8,
 		pole_size = 8,
 		pad_size = 20,
-		zPlane = false,
-		span,
 		onmouse
 	}: {
 		zeros: Complex[];
@@ -34,8 +32,6 @@
 		zero_size?: number;
 		pole_size?: number;
 		pad_size?: number;
-		zPlane?: boolean;
-		span?: Span2D;
 		onmouse?: (state: ComplexMouseState) => void;
 	} = $props();
 

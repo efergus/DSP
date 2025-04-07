@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { filterRoots, IirDigital, single_pole_bandpass, type Root } from '$lib/dsp/iir';
+	import { filterRoots, IirDigital, single_pole_bandpass, type OldRoot } from '$lib/dsp/iir';
 	import type { Span2D } from '$lib/math/span';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import Waveform from '../audio/Waveform.svelte';
@@ -24,7 +24,7 @@
 	const whatever2 = 0.1;
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
 	const sample_digital_filter = $derived(initialFilter);
-	let roots: Root[] = $state([]);
+	let roots: OldRoot[] = $state([]);
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
 	let filteredData = $state(new SampleData());
@@ -90,31 +90,19 @@
 	});
 </script>
 
-<div class="vrt">
-	<p>Gain: {gain.toPrecision(3)}</p>
+<div class="stack">
+	<div style:height="250px">
+		<p>Gain: {gain.toPrecision(3)}</p>
+	</div>
 	<div>
 		<PoleZeroEditor bind:roots conjugate />
 		<FilterDetails filter={digital_filter} />
 	</div>
 </div>
-<div class="vrt">
-	<button
-		onclick={() => {
-			player.play(data);
-		}}
-	>
-		Play
-	</button>
-	<Waveform data={filteredData} bind:span />
-</div>
 
 <style lang="less">
-	div {
-		display: flex;
+	div.stack {
+		flex-direction: row;
 		gap: 6px;
-	}
-	div.vrt {
-		flex-direction: column;
-		align-items: start;
 	}
 </style>

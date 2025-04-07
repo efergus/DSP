@@ -3,8 +3,9 @@
 	import { context } from '$lib/dsp/dsp';
 	import { apply_hann_window } from '$lib/dsp/window';
 	import { drawAxes } from '$lib/graphics/axes';
+	import LongCursor from '$lib/icons/LongCursor.svelte';
 	import { debounce, throttle } from '$lib/input/debounce';
-	import { mouse } from '$lib/input/mouse';
+	import { mouseDispatch } from '$lib/input/mouse';
 	import { clamp } from '$lib/math/clamp';
 	import { Point, point } from '$lib/math/point';
 	import { span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
@@ -13,12 +14,13 @@
 	let {
 		data,
 		span = $bindable(span2d(0, 1, -1, 1)),
+		cursor = $bindable(null),
+		cursorY = $bindable(null),
 		width = 500,
 		height = 200,
 		scale = 1,
 		axisSizeX = 36,
 		axisSizeY = 48,
-		cursor = 0,
 		logScale = false,
 		onwheel = () => {}
 	}: {
@@ -29,7 +31,8 @@
 		scale?: number;
 		axisSizeX?: number;
 		axisSizeY?: number;
-		cursor?: number;
+		cursor?: number | null;
+		cursorY?: number | null;
 		logScale?: boolean;
 		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
 	} = $props();
@@ -39,7 +42,8 @@
 
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
-	const screenSpan = $derived(span2d(axisSizeY, width, axisSizeX, height));
+	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
+	const interiorScreenSpan = $derived(span2d(0, screenSpan.x.size(), 0, screenSpan.y.size()));
 	let styleSize = $state(point(width, height));
 	let canvas: HTMLCanvasElement;
 	let currentSample: SampleData = $state(data);
@@ -53,6 +57,10 @@
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
 	const yLimits = $derived(span1d(0, samplerate / 2));
+
+	const cursorX = $derived(
+		cursor === null ? null : span.x.remapClamped(cursor, interiorScreenSpan.x)
+	);
 
 	const isInVerticalAxis = $derived(
 		(pos: Point) => pos.x <= axisSizeY && pos.y < height - axisSizeX
@@ -170,41 +178,95 @@
 	});
 </script>
 
-<canvas
-	bind:this={canvas}
-	style:width={`${styleSize.x}px`}
-	style:height={`${styleSize.y}px`}
-	{width}
-	{height}
-	onwheel={(e) => {
-		e.preventDefault();
-		const scale = Math.exp(-e.deltaY / 100);
-		if (isInHorizontalAxis(localMousePos)) {
-			span = span2dFromSpans(span.x.scale(scale, mappedMousePos.x), span.y);
-		} else {
-			span = span2dFromSpans(span.x, span.y.scale(scale, mappedMousePos.y).intersect(yLimits));
-		}
-		updateSpectrogramThrottled(span, data.updateVersion);
-	}}
-	{...mouse(({ pos, delta, down }) => {
-		localMousePos = pos;
-		mappedMousePos = screenSpan.remap(pos, span);
-		if (down) {
-			const mappedDelta = screenSpan.remapSize(delta, span);
+<div>
+	<canvas
+		bind:this={canvas}
+		style:width={`${styleSize.x}px`}
+		style:height={`${styleSize.y}px`}
+		{width}
+		{height}
+		onwheel={(e) => {
+			e.preventDefault();
+			const scale = Math.exp(-e.deltaY / 100);
 			if (isInHorizontalAxis(localMousePos)) {
-				mappedDelta.y = 0;
+				span = span2dFromSpans(span.x.scale(scale, mappedMousePos.x), span.y);
+			} else {
+				span = span2dFromSpans(span.x, span.y.scale(scale, mappedMousePos.y).intersect(yLimits));
 			}
-			if (isInVerticalAxis(localMousePos)) {
-				mappedDelta.x = 0;
-			}
-			if (span.y.max + mappedDelta.y > yLimits.max) {
-				mappedDelta.y = yLimits.max - span.y.max;
-			}
-			if (span.y.min + mappedDelta.y < yLimits.min) {
-				mappedDelta.y = yLimits.min - span.y.min;
-			}
-			span = span.move(-mappedDelta.x, mappedDelta.y);
 			updateSpectrogramThrottled(span, data.updateVersion);
-		}
-	})}
-></canvas>
+		}}
+		{...mouseDispatch(({ pos, delta, down, leaveEvent }) => {
+			localMousePos = pos;
+			mappedMousePos = screenSpan.remap(pos, span);
+			cursor = mappedMousePos.x;
+			cursorY = mappedMousePos.y;
+			if (down) {
+				const mappedDelta = screenSpan.remapSize(delta, span);
+				if (isInHorizontalAxis(localMousePos)) {
+					mappedDelta.y = 0;
+				}
+				if (isInVerticalAxis(localMousePos)) {
+					mappedDelta.x = 0;
+				}
+				if (span.y.max + mappedDelta.y > yLimits.max) {
+					mappedDelta.y = yLimits.max - span.y.max;
+				}
+				if (span.y.min + mappedDelta.y < yLimits.min) {
+					mappedDelta.y = yLimits.min - span.y.min;
+				}
+				span = span.move(-mappedDelta.x, mappedDelta.y);
+				updateSpectrogramThrottled(span, data.updateVersion);
+			}
+			if (leaveEvent) {
+				// cursor = null;
+				cursorY = null;
+			}
+		})}
+	></canvas>
+	<div
+		class="cursor"
+		style:top="0px"
+		style:left="0px"
+		style:width={`${width}px`}
+		style:height={`${height}px`}
+	>
+		{#if cursorX !== null}
+			<LongCursor x={cursorX} size={8} span={screenSpan} />
+		{/if}
+		{#if cursorY !== null}
+			<!-- Line to show location on Y axis -->
+			<svg
+				width={axisSizeY}
+				height={height - axisSizeX}
+				viewBox={`0 0 ${axisSizeY} {height - axisSizeX}`}
+				stroke-width={1}
+				stroke="currentColor"
+				fill="none"
+				style:position="absolute"
+				style:top="0px"
+				style:left="0px"
+				style:pointer-events="none"
+				style:width="{axisSizeY}px"
+				style:height="{height - axisSizeX}px"
+			>
+				<line
+					x1={axisSizeY / 2}
+					y1={span.y.remap(cursorY, screenSpan.y)}
+					x2={axisSizeY}
+					y2={span.y.remap(cursorY, screenSpan.y)}
+				/>
+			</svg>
+		{/if}
+	</div>
+</div>
+
+<style>
+	div {
+		position: relative;
+	}
+
+	.cursor {
+		position: absolute;
+		pointer-events: none;
+	}
+</style>

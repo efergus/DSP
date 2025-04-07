@@ -15,10 +15,45 @@ export class Span1D {
         return new Span1D(this.start, this.end);
     }
 
+    /**
+     * Moves the Span1D object by a specified distance.
+     * 
+     * @param {number} x - The distance to move the span. This value can be positive or negative.
+     * @returns {Span1D} - A new Span1D object after the movement.
+     */
     move(x: number): Span1D {
         return new Span1D(this.start + x, this.end + x);
     }
 
+    /**
+     * Moves the Span1D object by a specified distance while enforcing movement limits.
+     * 
+     * @param {number} x - The distance to move the span. This value can be positive or negative.
+     * @param {Span1D} limits - An object representing the minimum and maximum limits for the movement.
+     * @returns {Span1D} - A new Span1D object after the movement, constrained within the specified limits.
+     * 
+     * The function checks if moving the span by the specified distance would exceed the defined limits.
+     * If so, it adjusts the movement to ensure that the span remains within the limits.
+     */
+    moveWithLimits(x: number, limits: Span1D): Span1D {
+        const minDelta = limits.min - this.min;
+        if (minDelta > x) {
+            return this.move(minDelta)
+        }
+        const maxDelta = this.max - limits.max;
+        if (maxDelta > x) {
+            return this.move(maxDelta)
+        }
+        return this.move(x);
+    }
+
+    /**
+     * Scales the Span1D object by a specified scale factor.
+     * 
+     * @param {number} scale - The scale factor to apply to the span. This value can be positive or negative.
+     * @param {number} center - The center point of the span. If not provided, the center is the center of the span.
+     * @returns {Span1D} - A new Span1D object after the scaling.
+     */
     scale(scale: number, center?: number): Span1D {
         center = center ?? ((this.end + this.start) / 2);
         const d1 = this.start - center;
@@ -26,6 +61,15 @@ export class Span1D {
         return new Span1D(center + d1 * scale, center + d2 * scale);
     }
 
+    /**
+     * Intersects two Span1D objects.
+     * 
+     * @param {Span1D} span1 - The first span to intersect.
+     * @param {Span1D} span2 - The second span to intersect.
+     * @returns {Span1D} - A new Span1D object representing the intersection of the two spans.
+     * 
+     * Note: This function always re-orients the resulting span so that start < end.
+     */
     static intersect(span1: Span1D, span2: Span1D): Span1D {
         return new Span1D(
             Math.max(span1.min, span2.min),
@@ -103,10 +147,35 @@ export class Span2D {
         return this.y.size();
     }
 
+    /**
+     * Moves the Span2D object by specified distances in the x and y directions.
+     * 
+     * @param {number} x - The distance to move the span in the x direction. This value can be positive or negative.
+     * @param {number} y - The distance to move the span in the y direction. This value can be positive or negative.
+     * @returns {Span2D} - A new Span2D object after the movement.
+     */
     move(x: number, y: number): Span2D {
         return new Span2D(
             this.x.move(x),
             this.y.move(y)
+        );
+    }
+
+    /**     
+     * Moves the Span2D object by specified distances in the x and y directions while enforcing movement limits.
+     * 
+     * @param {number} x - The distance to move the span in the x direction. This value can be positive or negative.
+     * @param {number} y - The distance to move the span in the y direction. This value can be positive or negative.
+     * @param {Span2D} limits - An object representing the minimum and maximum limits for the movement in both x and y directions.
+     * @returns {Span2D} - A new Span2D object after the movement, constrained within the specified limits.
+     * 
+     * The function checks if moving the span by the specified distances would exceed the defined limits.
+     * If so, it adjusts the movement to ensure that the span remains within the limits.
+     */
+    moveWithLimits(x: number, y: number, limits: Span2D): Span2D {
+        return new Span2D(
+            this.x.moveWithLimits(x, limits.x),
+            this.y.moveWithLimits(y, limits.y)
         );
     }
 

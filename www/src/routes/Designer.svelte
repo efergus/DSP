@@ -90,7 +90,7 @@
 <style>
 	div {
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		gap: 6px;
 		padding: 6px;
 	}

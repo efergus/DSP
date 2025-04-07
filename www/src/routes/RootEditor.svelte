@@ -13,13 +13,14 @@
 	import NumberInput from '$lib/components/NumberInput.svelte';
 	import Circle from '$lib/icons/Circle.svelte';
 	import Trash from '$lib/icons/Trash.svelte';
-	import type { Root } from '$lib/dsp/iir';
+	import type { OldRoot } from '$lib/dsp/iir';
 
 	let name = uniqueId('root-');
 
 	let {
 		value = $bindable({
 			state: 0,
+			count: 1,
 			val: complex(0, 0)
 		}),
 		polar = $bindable(false),
@@ -31,7 +32,7 @@
 		onfocus,
 		onblur
 	}: {
-		value: Root;
+		value: OldRoot;
 		polar?: boolean;
 		hovered?: boolean;
 		selected?: boolean;
@@ -93,11 +94,6 @@
 			stateName: 'Pole',
 			circleFill: 'red',
 			circleStroke: 'red'
-		},
-		{
-			stateName: 'Off',
-			circleFill: 'blue',
-			circleStroke: 'blue'
 		}
 	];
 </script>
@@ -119,7 +115,7 @@
 					<input type="radio" class="hidden" {name} onclick={() => (value.state = index)} />
 				</label>
 			{/each}
-			{states[value.state].stateName}
+			{states[value.state]?.stateName}
 		</div>
 		<button onclick={() => ondelete?.()}>
 			<Trash />
@@ -137,7 +133,7 @@
 		<input
 			type="range"
 			min="0"
-			max="4"
+			max="6"
 			step="0.1"
 			value={-Math.log10(1 - radius)}
 			oninput={(event) => {

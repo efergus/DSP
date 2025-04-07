@@ -28,6 +28,10 @@ export function complex_to_polar(val: Complex): Polar {
     }
 }
 
+export function complex_copy(val: Complex) {
+    return { re: val.re, im: val.im }
+}
+
 export function polar_to_complex(val: Polar): Complex {
     return complex_polar(val.phase, val.norm);
 }

@@ -6,12 +6,13 @@
 		type SampleData
 	} from '$lib/audio/sample';
 	import { Span1D, span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
-	import { mouse, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
+	import { mouseDispatch, type MouseState, type MouseStateHandler } from '$lib/input/mouse';
 	import { onMount } from 'svelte';
 	import { axisLines, axisLinesLog, AxisScale } from '$lib/audio/axes';
 	import { point, type Point } from '$lib/math/point';
 	import { drawAxes } from '$lib/graphics/axes';
 	import LongCursor from '$lib/icons/LongCursor.svelte';
+	import CircleCursor from '$lib/icons/CircleCursor.svelte';
 
 	let {
 		data,
@@ -29,8 +30,8 @@
 		onZoom,
 		onMove
 	}: {
-		data: Sample;
-		filteredData?: Sample;
+		data: SampleData;
+		filteredData?: SampleData;
 		span?: Span2D;
 		cursor?: number | null;
 		samplerate?: number;
@@ -62,6 +63,16 @@
 			? (value: number) =>
 					span1d(Math.log(span.y.start), Math.log(span.y.end)).remap(Math.log(value), screenSpan.y)
 			: (value: number) => span.y.remap(value, screenSpan.y)
+	);
+	const pixelStride = $derived(interiorScreenSpan.x.size() / (span.x.size() * samplerate));
+	let cursorX = $derived(
+		cursor === null ? null : span.x.remapClamped(cursor, interiorScreenSpan.x)
+	);
+	let dataValueAtCursor = $derived(
+		cursor === null ? null : data.getInterpolated(cursor * samplerate)
+	);
+	let filteredDataValueAtCursor = $derived(
+		cursor === null || !filteredData ? null : filteredData.getInterpolated(cursor * samplerate)
 	);
 
 	const isInVerticalAxis = $derived(
@@ -180,6 +191,26 @@
 		if (filtered) {
 			drawWaveform(context, filtered, { color: 'red', weight: 2 });
 		}
+		if (pixelStride >= 1.2) {
+			if (dataValueAtCursor !== null) {
+				context.fillStyle = 'black';
+				context.fillRect(
+					axisSizeY / 2,
+					Math.floor(screenMapY(dataValueAtCursor)),
+					axisSizeY / 2,
+					1
+				);
+			}
+			if (filteredDataValueAtCursor !== null) {
+				context.fillStyle = 'red';
+				context.fillRect(
+					axisSizeY / 2,
+					Math.floor(screenMapY(filteredDataValueAtCursor)) - 1,
+					axisSizeY / 2,
+					2
+				);
+			}
+		}
 	};
 
 	onMount(() => {
@@ -247,9 +278,9 @@
 				}
 			}
 		}}
-		{...mouse(({ pos, delta, down }) => {
+		{...mouseDispatch(({ pos, delta, down }) => {
 			localMousePos = pos;
-			mappedMousePos = screenSpan.remap(pos, span);
+			mappedMousePos = screenSpan.remapClamped(pos, span);
 			cursor = mappedMousePos.x;
 			if (down) {
 				const mappedDelta = screenSpan.remapSize(delta, span);
@@ -267,18 +298,43 @@
 			}
 		})}
 	></canvas>
-	{#if cursor !== null}
-		<LongCursor
-			x={span.x.remap(cursor, interiorScreenSpan.x)}
-			width={width - axisSizeY}
-			size={8}
-			span={screenSpan}
-		/>
-	{/if}
+	<div
+		class="cursor"
+		style:top="0px"
+		style:left={`${axisSizeY}px`}
+		style:width={`${width - axisSizeY}px`}
+		style:height={`${height - axisSizeX}px`}
+	>
+		{#if cursorX !== null}
+			<LongCursor x={cursorX} size={8} span={interiorScreenSpan} />
+			{#if pixelStride >= 1.2}
+				{#if dataValueAtCursor !== null}
+					<CircleCursor
+						x={cursorX}
+						y={span.y.remapClamped(dataValueAtCursor, screenSpan.y)}
+						size={8}
+					/>
+				{/if}
+				{#if filteredDataValueAtCursor !== null}
+					<CircleCursor
+						x={cursorX}
+						y={span.y.remapClamped(filteredDataValueAtCursor, screenSpan.y)}
+						color="red"
+						size={8}
+					/>
+				{/if}
+			{/if}
+		{/if}
+	</div>
 </div>
 
 <style>
 	div {
 		position: relative;
+	}
+
+	.cursor {
+		position: absolute;
+		pointer-events: none;
 	}
 </style>

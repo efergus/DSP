@@ -15,10 +15,9 @@ export const chirpSample = (base_freq = 20, peak_freq = 1000, samplerate = 44100
     // (x^2/2)' = x
     length = length ?? samplerate * 4;
     let res = new Float32Array(length);
+    const chirpRate = (peak_freq - base_freq) / length;
     for (let i = 0; i < length; i++) {
-        const current_freq =
-            base_freq + (peak_freq - base_freq) * (i / length);
-        res[i] = Math.sin(Math.PI * current_freq * i / samplerate);
+        res[i] = Math.sin(2 * Math.PI * (base_freq + chirpRate * i) * i / samplerate);
     }
     return new SampleData(res, samplerate);
 };
@@ -95,7 +94,11 @@ export function phaseNoise(samples = 128) {
         spectrum[idx + 1] = val.im;
     }
 
-    return new SampleData(fft_context.fft_inverse(spectrum));
+    return fft_context.fft_inverse(spectrum);
+}
+
+export function phaseNoiseSample(samples = 128) {
+    return new SampleData(phaseNoise(samples));
 }
 
 export function sinSample(freq = 440, samplerate = 44100, length?: number) {

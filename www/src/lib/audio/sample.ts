@@ -52,6 +52,20 @@ export class SampleData implements SampleWithSamplerate {
         return this.data[chunk][frame];
     }
 
+    getInterpolated(index: number) {
+        const intIndex = Math.floor(index);
+        if (intIndex >= this.length - 1) {
+            return this.get(this.length - 1);
+        }
+        if (intIndex < 0) {
+            return this.get(0);
+        }
+        const frac = index - intIndex;
+        const prev = this.get(intIndex);
+        const next = this.get(intIndex + 1);
+        return prev + frac * (next - prev);
+    }
+
     slice(start: number = 0, end?: number) {
         end = end ?? this.length;
         const length = end < 0 ? this.length - start + end : end - start

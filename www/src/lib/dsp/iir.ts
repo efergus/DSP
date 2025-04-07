@@ -1,12 +1,18 @@
 import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
+import type { P } from "vitest/dist/chunks/environment.d8YfPkTm.js";
 import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_norm2, complex_phase, complex_phase_2, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
 
-export const ZERO_STATE = 0;
+export const ZERO_STATE = -1;
 export const POLE_STATE = 1;
-export const DEAD_STATE = 2;
 
 export type Root = {
+    degree: number;
+    val: Complex;
+}
+
+export type OldRoot = {
     state: number;
+    count: number;
     val: Complex;
 };
 
@@ -121,7 +127,7 @@ export class IirDigital extends Iir {
         super(zeros, poles, gain);
     }
 
-    static from_roots(roots: Root[], gain = 1) {
+    static from_roots(roots: OldRoot[], gain = 1) {
         return new IirDigital(
             addConjugates(roots.filter(({ state }) => state === ZERO_STATE).map(({ val }) => val)),
             addConjugates(roots.filter(({ state }) => state === POLE_STATE).map(({ val }) => val)),
@@ -387,15 +393,17 @@ export function single_pole_bandpass(freq: number, width: number) {
     return new IirDigital(addConjugates([complex_polar(freq, 0.95 - width)]), addConjugates([complex_polar(freq, 0.95)]))
 }
 
-export function filterRoots(filter: IirDigital): Root[] {
+export function filterRoots(filter: IirDigital): OldRoot[] {
     return filter.zeros
         .map((val) => ({
-            state: 0,
+            state: ZERO_STATE,
+            count: 1,
             val
         }))
         .concat(
             filter.poles.map((val) => ({
-                state: 1,
+                state: POLE_STATE,
+                count: 1,
                 val
             }))
         )

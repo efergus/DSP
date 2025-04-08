@@ -217,6 +217,17 @@ export class SampleView implements Sample {
     frames(): number {
         return this.length;
     }
+
+    getInterpolated(index: number) {
+        const intIndex = Math.floor(index);
+        if (intIndex >= this.length - 1) {
+            return this.get(this.length - 1);
+        }
+        const frac = index - intIndex;
+        const prev = this.get(intIndex);
+        const next = this.get(intIndex + 1);
+        return prev + frac * (next - prev);
+    }
 }
 
 export function minmax(data: NumArr | Sample): Span1D {

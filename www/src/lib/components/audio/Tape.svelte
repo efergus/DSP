@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData } from '$lib/audio/sample';
+	import type { IirDigital } from '$lib/dsp/iir';
 	import {
 		chirpSample,
 		phaseNoiseSample,
@@ -18,18 +19,41 @@
 	let {
 		data = $bindable(new SampleData()),
 		filteredData,
+		filter,
 		span = $bindable(span2d(0, 1, -1, 1)),
 		frequencySpan = $bindable(span1d(0, data.samplerate / 2)),
 		onData
 	}: {
 		data?: SampleData;
 		filteredData?: SampleData;
+		filter?: IirDigital;
 		span?: Span2D;
 		frequencySpan?: Span1D;
 		onData?: (sample: SampleData) => void;
 	} = $props();
 
 	let cursor: number | null = $state(null);
+	let filterChanged = $state(0);
+	let player: PlayerWithFilter = $state(
+		new PlayerWithFilter(filter, {
+			callback: ({ remaining }) => {
+				if (!remaining) {
+					const now = Date.now();
+					if (now - filterChanged < 3000) {
+						setTimeout(() => player.play(data), 250);
+					}
+				}
+			}
+		})
+	);
+
+	$effect(() => {
+		if (!filter) {
+			return;
+		}
+		player.setFilter(filter);
+		filterChanged = Date.now();
+	});
 </script>
 
 <div class="stack">
@@ -67,7 +91,6 @@
 		<Button
 			slim
 			onclick={() => {
-				const player = new PlayerWithFilter();
 				player.play(data);
 			}}
 		>

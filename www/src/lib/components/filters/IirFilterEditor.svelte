@@ -12,11 +12,13 @@
 		data,
 		span = $bindable(),
 		frequencySpan = $bindable(),
+		onFilterChange,
 		onFilteredData
 	}: {
 		data: SampleData;
 		span: Span2D;
 		frequencySpan: Span1D;
+		onFilterChange?: (filter: IirDigital) => void;
 		onFilteredData?: (sample: SampleData) => void;
 	} = $props();
 
@@ -25,6 +27,7 @@
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
 	const sample_digital_filter = $derived(initialFilter.to_digital_bilinear());
 	let roots: IirRoots = $state(new IirRoots(filterRoots(initialFilter)));
+
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
 	let filteredData = $state(new SampleData());
@@ -55,6 +58,7 @@
 		roots.setSPlane(filterRoots(sample_digital_filter));
 	});
 	$effect(() => {
+		onFilterChange?.(digital_filter);
 		player.setFilter(digital_filter);
 		filterChanged = Date.now();
 	});

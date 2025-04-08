@@ -21,22 +21,29 @@
 		zPlane?: boolean;
 	} = $props();
 
-	let pad = $derived(1 + padding);
-	let scale = $derived(Math.min(width, height) / pad / 2);
-
 	let hover: number | null = $state(null);
 	let active: number | null = $state(null);
 </script>
 
 <div>
-	<PoleZeroPlot bind:roots bind:hover bind:active {span} {width} {height} {zPlane} />
+	<PoleZeroPlot
+		bind:roots={() => roots, (value) => (roots = value)}
+		bind:hover
+		bind:active
+		{span}
+		{width}
+		{height}
+		{zPlane}
+	/>
 	<div>
 		{#each roots as _, index}
 			<RootEditor
-				polar={true}
+				polar={zPlane}
 				bind:value={() => roots[index],
 				(value) => {
-					roots[index] = value;
+					const newRoots = [...roots];
+					newRoots[index] = value;
+					roots = newRoots;
 				}}
 				hovered={hover === index}
 				onenter={() => {

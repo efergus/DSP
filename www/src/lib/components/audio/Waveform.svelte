@@ -2,6 +2,7 @@
 	import {
 		DEFAULT_AUDIO_SAMPLERATE,
 		SampleSlice,
+		SampleView,
 		type Sample,
 		type SampleData
 	} from '$lib/audio/sample';
@@ -30,8 +31,8 @@
 		onZoom,
 		onMove
 	}: {
-		data: SampleData;
-		filteredData?: SampleData;
+		data: SampleData | SampleView;
+		filteredData?: SampleData | SampleView;
 		span?: Span2D;
 		cursor?: number | null;
 		samplerate?: number;

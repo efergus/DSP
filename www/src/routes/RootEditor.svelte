@@ -2,7 +2,6 @@
 	import {
 		complex,
 		complex_dist,
-		complex_norm2,
 		complex_polar,
 		complex_to_polar,
 		degrees_to_rad,
@@ -13,26 +12,24 @@
 	import NumberInput from '$lib/components/NumberInput.svelte';
 	import Circle from '$lib/icons/Circle.svelte';
 	import Trash from '$lib/icons/Trash.svelte';
-	import type { OldRoot } from '$lib/dsp/iir';
+	import type { Root } from '$lib/dsp/iir';
 
 	let name = uniqueId('root-');
 
 	let {
 		value = $bindable({
-			state: 0,
-			count: 1,
+			degree: 1,
 			val: complex(0, 0)
 		}),
 		polar = $bindable(false),
 		hovered,
-		selected,
 		ondelete,
 		onenter,
 		onleave,
 		onfocus,
 		onblur
 	}: {
-		value: OldRoot;
+		value: Root;
 		polar?: boolean;
 		hovered?: boolean;
 		selected?: boolean;
@@ -88,12 +85,14 @@
 		{
 			stateName: 'Zero',
 			circleFill: 'none',
-			circleStroke: 'black'
+			circleStroke: 'black',
+			degree: 1
 		},
 		{
 			stateName: 'Pole',
 			circleFill: 'red',
-			circleStroke: 'red'
+			circleStroke: 'red',
+			degree: -1
 		}
 	];
 </script>
@@ -109,13 +108,23 @@
 >
 	<div class="state between">
 		<div class={['state', hovered && 'gray']}>
-			{#each states as state, index}
-				<label class={[index === value.state && 'active']}>
+			{#each states as state}
+				<label class={[Math.sign(value.degree) === Math.sign(state.degree) && 'active']}>
 					<Circle fill={state.circleFill} stroke={state.circleStroke} size={18} />
-					<input type="radio" class="hidden" {name} onclick={() => (value.state = index)} />
+					<input
+						type="radio"
+						class="hidden"
+						{name}
+						onclick={() => {
+							value = {
+								...value,
+								degree: state.degree
+							};
+						}}
+					/>
 				</label>
 			{/each}
-			{states[value.state]?.stateName}
+			{states[value.degree > 0 ? 0 : 1]?.stateName}
 		</div>
 		<button onclick={() => ondelete?.()}>
 			<Trash />

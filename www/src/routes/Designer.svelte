@@ -6,7 +6,7 @@
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
-	import { Span2D, span2d } from '$lib/math/span';
+	import { span1d, Span2D, span2d } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
 	const initialDuration = 2;
@@ -19,6 +19,7 @@
 	let data: SampleData = $state(initialSample);
 	let lastData: SampleData = $state(initialSample);
 	let filteredData: SampleData = $state(initialSample);
+	let frequencySpan = $state(span1d(0, 0.5));
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
@@ -79,10 +80,17 @@
 </script>
 
 <div>
-	<Tape bind:span={getSpan, setSpan} {data} {filteredData} onData={(sample) => (data = sample)} />
+	<Tape
+		bind:span={getSpan, setSpan}
+		bind:frequencySpan
+		{data}
+		{filteredData}
+		onData={(sample) => (data = sample)}
+	/>
 	<IirFilterEditor
 		{data}
 		bind:span={getSpan, setSpan}
+		bind:frequencySpan
 		onFilteredData={(sample) => (filteredData = sample)}
 	/>
 </div>

@@ -1,7 +1,19 @@
 <script lang="ts">
-	import { complex, complex_conjugate, type Complex } from '$lib/dsp/complex';
+	import {
+		complex,
+		complex_add,
+		complex_conjugate,
+		complex_copy,
+		complex_dist,
+		complex_div_scalar,
+		complex_norm,
+		complex_sub,
+		type Complex
+	} from '$lib/dsp/complex';
 	import { Span2D, span2d } from '$lib/math/span';
 	import { mouseDispatch, type MouseState } from '$lib/input/mouse';
+	import type { Root } from '$lib/dsp/iir';
+	import { point } from '$lib/math/point';
 
 	export type ComplexMouseState = {
 		complexPos: Complex;
@@ -10,82 +22,54 @@
 	} & MouseState;
 
 	let {
-		zeros,
-		poles,
-		dead,
-		hover = null,
-		width = 300,
-		height = 300,
-		padding = 0.2,
+		roots = $bindable([]),
+		hover = $bindable(null),
+		active = $bindable(null),
+		width = 250,
+		height = 250,
 		zero_size = 8,
 		pole_size = 8,
-		pad_size = 20,
+		hover_size = 16,
 		zPlane = false,
-		span,
-		onmouse
+		span
 	}: {
-		zeros: Complex[];
-		poles: Complex[];
-		dead?: Complex[];
-		hover: Complex | null;
+		roots: Root[];
+		hover: number | null;
+		active: number | null;
+		span: Span2D;
 		width?: number;
 		height?: number;
-		padding?: number;
 		zero_size?: number;
 		pole_size?: number;
-		pad_size?: number;
+		hover_size?: number;
 		zPlane?: boolean;
-		span?: Span2D;
-		onmouse?: (state: ComplexMouseState) => void;
 	} = $props();
 
-	let pad = $derived(1 + padding);
-	let scale = $derived(Math.min(width, height) / pad / 2);
+	const screenSpan = $derived(span2d(0, width, height, 0));
+	const poles = $derived(roots.filter((r) => r.degree < 0));
+	const zeros = $derived(roots.filter((r) => r.degree > 0));
+	const selectThreshold = $derived(screenSpan.x.remapSize(hover_size / 2, span.x));
+
+	let mouseDragOffset: Complex = $state(complex());
 
 	let canvas: HTMLCanvasElement;
-
-	const val2px = (val: number) => val * scale;
-
-	const px2val = (val: number) => val / scale;
-
-	const px2pos = (x: number, y: number) => ({
-		x: (x - width / 2) / scale,
-		y: (height / 2 - y) / scale
-	});
-
-	const pos2px = (x: number, y: number) => ({
-		x: width / 2 + x * scale,
-		y: height / 2 - y * scale
-	});
-
-	const mousePos = (e: MouseState) => {
-		let canvasRect = (e.target as HTMLCanvasElement).getBoundingClientRect();
-		let mouseX = e.pos.x - canvasRect.x;
-		let mouseY = e.pos.y - canvasRect.y;
-		let pos = px2pos(mouseX, mouseY);
-		return complex(pos.x, pos.y);
-	};
 
 	const clear = (context: CanvasRenderingContext2D) => {
 		context.fillStyle = 'rgb(220 220 220)';
 		context.fillRect(0, 0, canvas.width, canvas.height);
 	};
 
-	const draw_axes = (context: CanvasRenderingContext2D) => {
-		let top = pos2px(0, pad);
-		let bottom = pos2px(0, -pad);
-		let left = pos2px(-pad, 0);
-		let right = pos2px(pad, 0);
+	const drawAxes = (context: CanvasRenderingContext2D) => {
+		const top = screenSpan.y.min;
+		const left = screenSpan.x.start;
+		const width = screenSpan.x.size();
+		const height = screenSpan.y.size();
+		const centerX = Math.floor(span.x.remap(0, screenSpan.x));
+		const centerY = Math.floor(span.y.remap(0, screenSpan.y));
 
-		context.strokeStyle = 'black';
-		context.lineWidth = 1;
-		context.beginPath();
-		context.moveTo(top.x + 0.5, top.y);
-		context.lineTo(bottom.x + 0.5, bottom.y);
-		context.stroke();
-		context.moveTo(left.x, left.y - 0.5);
-		context.lineTo(right.x, right.y - 0.5);
-		context.stroke();
+		context.fillStyle = 'black';
+		context.fillRect(centerX, top, 1, height);
+		context.fillRect(left, centerY, width, 1);
 	};
 
 	type DrawCircleOptions = {
@@ -96,7 +80,7 @@
 		conjugate?: boolean;
 	};
 
-	const draw_circle = (
+	const drawCircle = (
 		context: CanvasRenderingContext2D,
 		pos: Complex | Complex[],
 		options: DrawCircleOptions = {}
@@ -110,7 +94,7 @@
 		const { radius = zero_size / 2, fillStyle, strokeStyle, lineWidth = 2 } = options;
 
 		for (let pos of posArr) {
-			const center = pos2px(pos.re, pos.im);
+			const center = span.remap(point(pos.re, pos.im), screenSpan);
 			context.beginPath();
 			context.arc(center.x, center.y, radius, 0, 2 * Math.PI);
 			if (fillStyle) {
@@ -125,9 +109,9 @@
 		}
 	};
 
-	const draw_unit_circle = (context: CanvasRenderingContext2D) => {
-		draw_circle(context, complex(0, 0), {
-			radius: val2px(1),
+	const drawUnitCircle = (context: CanvasRenderingContext2D) => {
+		drawCircle(context, complex(0, 0), {
+			radius: span.x.remapSize(1, screenSpan.x),
 			strokeStyle: 'black',
 			lineWidth: 1,
 			fillStyle: 'white'
@@ -136,32 +120,116 @@
 
 	const draw = (
 		context: CanvasRenderingContext2D,
-		zeros: Complex[],
-		poles: Complex[],
+		zeros: Root[],
+		poles: Root[],
 		hover: Complex | null
 	) => {
 		clear(context);
-		draw_unit_circle(context);
-		draw_axes(context);
+		if (zPlane) {
+			drawUnitCircle(context);
+		}
+		drawAxes(context);
+
 		if (hover) {
-			draw_circle(context, hover, { radius: pad_size / 2, fillStyle: 'rgba(0, 0, 0, 0.2)' });
-			draw_circle(context, complex_conjugate(hover), {
-				radius: pad_size / 2,
+			drawCircle(context, hover, { radius: hover_size / 2, fillStyle: 'rgba(0, 0, 0, 0.2)' });
+			drawCircle(context, complex_conjugate(hover), {
+				radius: hover_size / 2,
 				fillStyle: 'rgba(0, 0, 0, 0.2)'
 			});
 		}
-		draw_circle(context, zeros, {
+		const conjugatedZeros = zeros.map((z) => complex_conjugate(z.val));
+		const conjugatedPoles = poles.map((z) => complex_conjugate(z.val));
+		drawCircle(context, [...zeros.map((z) => z.val), ...conjugatedZeros], {
 			strokeStyle: 'black',
 			radius: zero_size / 2
 		});
-		draw_circle(context, poles, {
+		drawCircle(context, [...poles.map((z) => z.val), ...conjugatedPoles], {
 			fillStyle: 'red',
 			radius: pole_size / 2
 		});
-		draw_circle(context, dead ?? [], {
-			fillStyle: 'blue',
-			radius: zero_size / 2
-		});
+	};
+
+	const closestPoint = (pos: Complex, arr: Root[], threshold = selectThreshold): number => {
+		let closest = -1;
+		let closest_distance = threshold;
+		for (let index = 0; index < arr.length; index++) {
+			let val = arr[index].val;
+			let dist = Math.min(complex_dist(pos, val), complex_dist(pos, complex_conjugate(val)));
+			if (dist <= closest_distance) {
+				closest = index;
+				closest_distance = dist;
+			}
+		}
+		return closest;
+	};
+
+	const zPlaneLimit = (pos: Complex): Complex => {
+		if (pos.im < 0) {
+			pos = complex(pos.re, 0);
+		}
+		const norm = complex_norm(pos);
+		if (norm > 1) {
+			return complex_div_scalar(pos, norm);
+		}
+		return pos;
+	};
+
+	const sPlaneLimit = (pos: Complex): Complex => {
+		if (pos.im < 0) {
+			pos = complex(pos.re, 0);
+		}
+		if (pos.re > 0) {
+			pos = complex(0, pos.im);
+		}
+		return pos;
+	};
+
+	const limitFn = $derived(zPlane ? zPlaneLimit : sPlaneLimit);
+
+	const handleHover = (mousePos: Complex) => {
+		let selected = closestPoint(mousePos, roots);
+		hover = selected >= 0 ? selected : null;
+	};
+
+	const handleMouse = (pos: Complex, delta: Complex, state: MouseState) => {
+		const activeBefore = active;
+		// hover
+		if (state.edgeDown) {
+			let closest = closestPoint(pos, roots);
+			active = closest >= 0 ? closest : null;
+			if (active !== null) {
+				mouseDragOffset = complex_sub(roots[active].val, pos);
+			}
+		}
+		// click to add or delete
+		if (state.click) {
+			if (active === null) {
+				// did not click on a root, add a new root
+				active = roots.length;
+				roots = roots.concat([
+					{
+						degree: 1,
+						val: pos
+					}
+				]);
+			} else if (active === activeBefore) {
+				// clicked on active root, delete it
+				const newRoots = roots.slice();
+				newRoots.splice(active, 1);
+				roots = newRoots;
+				active = null;
+			}
+		}
+		// click and drag
+		if (state.down && active !== null) {
+			const newRoots = roots.slice();
+			const newPos = limitFn(complex_add(pos, mouseDragOffset));
+			newRoots[active] = {
+				...newRoots[active],
+				val: newPos
+			};
+			roots = newRoots;
+		}
 	};
 
 	$effect(() => {
@@ -169,7 +237,8 @@
 		if (!context) {
 			return;
 		}
-		draw(context, zeros, poles, hover);
+		const hoverComplex = hover === null ? null : roots[hover].val;
+		draw(context, zeros, poles, hoverComplex);
 	});
 </script>
 
@@ -178,21 +247,14 @@
 		bind:this={canvas}
 		{width}
 		{height}
-		{...mouseDispatch(
-			(state) => {
-				let pos = complex(state.pos.x, state.pos.y);
-				let delta = complex(px2val(state.delta.x), val2px(-state.delta.y));
-				onmouse?.({
-					complexPos: pos,
-					complexDelta: delta,
-					scale,
-					...state
-				});
-			},
-			{
-				remap: span2d(-pad, pad, -pad, pad)
-			}
-		)}
+		{...mouseDispatch((state) => {
+			const localPos = screenSpan.remap(state.pos, span);
+			const localDelta = screenSpan.remapSize(state.delta, span);
+			const complexPos = complex(localPos.x, localPos.y);
+			const complexDelta = complex(localDelta.x, localDelta.y);
+			handleMouse(complexPos, complexDelta, state);
+			handleHover(complexPos);
+		})}
 	></canvas>
 </div>
 

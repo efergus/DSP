@@ -8,7 +8,7 @@
 		whiteNoiseSample
 	} from '$lib/dsp/samples';
 	import PlayPixel from '$lib/icons/PlayPixel.svelte';
-	import { span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
+	import { Span1D, span1d, span2d, span2dFromSpans, type Span2D } from '$lib/math/span';
 	import Button from '../input/Button.svelte';
 	import AudioFileInput from './AudioFileInput.svelte';
 	import Recorder from './Recorder.svelte';
@@ -19,16 +19,17 @@
 		data = $bindable(new SampleData()),
 		filteredData,
 		span = $bindable(span2d(0, 1, -1, 1)),
+		frequencySpan = $bindable(span1d(0, data.samplerate / 2)),
 		onData
 	}: {
 		data?: SampleData;
 		filteredData?: SampleData;
 		span?: Span2D;
+		frequencySpan?: Span1D;
 		onData?: (sample: SampleData) => void;
 	} = $props();
 
 	let cursor: number | null = $state(null);
-	let spectrumVerticalSpan = $state(span1d(0, data.samplerate / 2));
 </script>
 
 <div class="stack">
@@ -38,9 +39,9 @@
 			height={250}
 			data={filteredData ?? data}
 			logScale
-			bind:span={() => span2dFromSpans(span.x, spectrumVerticalSpan),
+			bind:span={() => span2dFromSpans(span.x, frequencySpan),
 			(newSpan) => {
-				spectrumVerticalSpan = newSpan.y;
+				frequencySpan = newSpan.y;
 				span = span2dFromSpans(newSpan.x, span.y);
 			}}
 			bind:cursor

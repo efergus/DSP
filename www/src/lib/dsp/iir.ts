@@ -127,10 +127,12 @@ export class IirDigital extends Iir {
         super(zeros, poles, gain);
     }
 
-    static from_roots(roots: OldRoot[], gain = 1) {
+    static from_roots(roots: Root[], gain = 1) {
+        const zeros = roots.filter(({ degree }) => degree > 0);
+        const poles = roots.filter(({ degree }) => degree < 0);
         return new IirDigital(
-            addConjugates(roots.filter(({ state }) => state === ZERO_STATE).map(({ val }) => val)),
-            addConjugates(roots.filter(({ state }) => state === POLE_STATE).map(({ val }) => val)),
+            addConjugates(zeros.flatMap(({ degree, val }) => new Array(degree).fill(val))),
+            addConjugates(poles.flatMap(({ degree, val }) => new Array(-degree).fill(val))),
             gain
         );
     }
@@ -385,25 +387,27 @@ export function butterworth(freq: number, order = 2) {
     return new IirContinuous([], poles, gain);
 }
 
-export function single_pole_bandstop(freq: number, width: number) {
+export function single_pole_bandpass(freq: number, width: number) {
+    return new IirContinuous([], addConjugates([complex(- width, freq)]))
+}
+
+export function single_pole_bandstop_digital(freq: number, width: number) {
     return new IirDigital(addConjugates([complex_polar(freq, 1)]), addConjugates([complex_polar(freq, 1 - width)]))
 }
 
-export function single_pole_bandpass(freq: number, width: number) {
+export function single_pole_bandpass_digital(freq: number, width: number) {
     return new IirDigital(addConjugates([complex_polar(freq, 0.95 - width)]), addConjugates([complex_polar(freq, 0.95)]))
 }
 
-export function filterRoots(filter: IirDigital): OldRoot[] {
+export function filterRoots(filter: Iir): Root[] {
     return filter.zeros
         .map((val) => ({
-            state: ZERO_STATE,
-            count: 1,
+            degree: 1,
             val
         }))
         .concat(
             filter.poles.map((val) => ({
-                state: POLE_STATE,
-                count: 1,
+                degree: -1,
                 val
             }))
         )

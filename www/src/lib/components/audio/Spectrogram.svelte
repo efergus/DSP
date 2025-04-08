@@ -42,6 +42,7 @@
 
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
+	const frequencySpan = $derived(span1d(span.y.start * samplerate, span.y.end * samplerate));
 	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
 	const interiorScreenSpan = $derived(span2d(0, screenSpan.x.size(), 0, screenSpan.y.size()));
 	let styleSize = $state(point(width, height));
@@ -56,7 +57,7 @@
 
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
-	const yLimits = $derived(span1d(0, samplerate / 2));
+	const yLimits = $derived(span1d(-0.5, 0.5));
 
 	const cursorX = $derived(
 		cursor === null ? null : span.x.remapClamped(cursor, interiorScreenSpan.x)
@@ -129,11 +130,12 @@
 					0,
 					frequencyData.length - 1
 				);
-				if (!span.y.contains(pos.y)) {
+				const frequencySlice = frequencyData[frequencyX];
+				const frequencyY = Math.floor(Math.abs(pos.y * fftSize));
+				if (frequencyY >= frequencySlice.length) {
 					continue;
 				}
-				const frequencyY = Math.floor((pos.y * fftSize) / samplerate);
-				const value = frequencyData[frequencyX][frequencyY];
+				const value = frequencySlice[frequencyY];
 				const mappedValue = logScale ? Math.log(value) : value;
 				const mapped = Math.max(0, Math.floor(range.remap(mappedValue, mapping)));
 				setPixel(x, y, mapped, mapped, mapped);
@@ -151,7 +153,11 @@
 		}
 		if (span !== drawn || updateVersion !== data.updateVersion) {
 			context.clearRect(0, 0, width, height);
-			drawAxes(context, { span, sizeX: axisSizeX, sizeY: axisSizeY });
+			drawAxes(context, {
+				span: span2dFromSpans(span.x, frequencySpan),
+				sizeX: axisSizeX,
+				sizeY: axisSizeY
+			});
 			updateSpectrogramData();
 			drawSpectrogramData(context);
 		}

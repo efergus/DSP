@@ -6,7 +6,7 @@ export const squareSample = (freq = 440, samplerate = 44100, length?: number, sc
     length = length ?? samplerate * 4;
     let res = new Float32Array(length);
     for (let i = 0; i < length; i++) {
-        res[i] = (((freq * i) % samplerate) >= samplerate / 2) ? scale : -scale;
+        res[i] = (((freq * i) % samplerate) <= samplerate / 2) ? scale : -scale;
     }
     return new SampleData(res, samplerate);
 };

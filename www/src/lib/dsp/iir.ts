@@ -157,7 +157,7 @@ export class IirDigital extends Iir {
                 }
             }
             // y *= this.gain;
-            for (let delay = 1; delay < N && delay <= pastOutputView.length + idx; delay++) {
+            for (let delay = 0; delay < N && delay <= pastOutputView.length + idx; delay++) {
                 if (delay > idx) {
                     y -= pastOutputView.get(pastOutputView.length + idx - delay) * this._back[delay]
                 }
@@ -306,6 +306,17 @@ export class IirDigital extends Iir {
         return this.max_frequency_response_gradient_ascent(max_freq);
     }
 
+    /**
+     * Returns the phase of the filter response at a given frequency.
+     * 
+     * The phase is calculated as the total contribution of all zeros and poles,
+     * with zeros contributing positive phase and poles contributing negative phase.
+     * The phase does not wrap around at π. For example, many zeros will cause a
+     * phase of greater than π.
+     * 
+     * @param freq - The frequency at which to calculate the phase
+     * @returns The phase of the frequency response at the given frequency
+     */
     frequency_response_phase(freq: number): number {
         let acc = freq * (this.poles.length - this.zeros.length);
         let point = complex_polar(freq * Math.PI * 2);
@@ -329,6 +340,15 @@ export class IirDigital extends Iir {
         return acc;
     }
 
+    /**
+     * Returns the phase of the filter response at a given frequency.
+     * 
+     * The phase is calculated as the total contribution of all zeros and poles.
+     * The phase is wrapped at π and -π.
+     * 
+     * @param freq - The frequency at which to calculate the phase
+     * @returns The phase of the frequency response at the given frequency
+     */
     frequency_response_phase_2(freq: number): number {
         let response_complex = this.frequency_response(freq);
         return complex_phase(response_complex);

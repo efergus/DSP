@@ -20,6 +20,7 @@
 		filteredData,
 		span = $bindable(span2d(0, 1, -1, 1)),
 		cursor = $bindable(null),
+		playing = $bindable(false),
 		width = 500,
 		height = 200,
 		strokeWidth = 1,
@@ -35,6 +36,7 @@
 		filteredData?: SampleData | SampleView;
 		span?: Span2D;
 		cursor?: number | null;
+		playing?: boolean;
 		samplerate?: number;
 		width?: number;
 		height?: number;
@@ -66,14 +68,15 @@
 			: (value: number) => span.y.remap(value, screenSpan.y)
 	);
 	const pixelStride = $derived(interiorScreenSpan.x.size() / (span.x.size() * samplerate));
-	let cursorX = $derived(
-		cursor === null ? null : span.x.remapClamped(cursor, interiorScreenSpan.x)
-	);
+	const cursorPos = $derived(cursor !== null && span.x.contains(cursor) ? cursor : null);
+	let cursorX = $derived(cursorPos === null ? null : span.x.remap(cursorPos, interiorScreenSpan.x));
 	let dataValueAtCursor = $derived(
-		cursor === null ? null : data.getInterpolated(cursor * samplerate)
+		cursorPos === null ? null : data.getInterpolated(cursorPos * samplerate)
 	);
 	let filteredDataValueAtCursor = $derived(
-		cursor === null || !filteredData ? null : filteredData.getInterpolated(cursor * samplerate)
+		cursorPos === null || !filteredData
+			? null
+			: filteredData.getInterpolated(cursorPos * samplerate)
 	);
 
 	const isInVerticalAxis = $derived(
@@ -280,6 +283,9 @@
 			}
 		}}
 		{...mouseDispatch(({ pos, delta, down }) => {
+			if (playing) {
+				return;
+			}
 			localMousePos = pos;
 			mappedMousePos = screenSpan.remapClamped(pos, span);
 			cursor = mappedMousePos.x;

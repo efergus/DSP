@@ -4,3 +4,9 @@
 </script>
 
 <slot />
+
+<style lang="less">
+	:global(body) {
+		// background-color: rgb(220 220 220);
+	}
+</style>

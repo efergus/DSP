@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
+	import AudioPlayButton from '$lib/components/audio/AudioPlayButton.svelte';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import type { IirDigital } from '$lib/dsp/iir';
@@ -7,7 +9,7 @@
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
-	import { span1d, Span2D, span2d } from '$lib/math/span';
+	import { span1d, Span2D, span2d, span2dFromSpans } from '$lib/math/span';
 	import { onMount } from 'svelte';
 
 	const initialDuration = 2;
@@ -78,16 +80,33 @@
 		}
 	};
 
-	$inspect(effectiveLimits);
+	let cursor: number | null = $state(null);
+	let playing = $state(false);
 </script>
 
 <div>
+	<AudioPlayButton
+		{data}
+		{filter}
+		onFrame={(frame) => {
+			cursor = frame / data.samplerate;
+			if (span.x.end < cursor) {
+				span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
+			}
+			if (span.x.start > cursor) {
+				span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
+			}
+		}}
+		bind:playing
+	/>
 	<Tape
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
 		{data}
 		{filteredData}
 		{filter}
+		{cursor}
+		{playing}
 		onData={(sample) => (data = sample)}
 	/>
 	<IirFilterEditor

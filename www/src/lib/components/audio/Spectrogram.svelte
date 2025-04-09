@@ -22,6 +22,7 @@
 		axisSizeX = 36,
 		axisSizeY = 48,
 		logScale = false,
+		playing = false,
 		onwheel = () => {}
 	}: {
 		data: SampleData;
@@ -34,6 +35,7 @@
 		cursor?: number | null;
 		cursorY?: number | null;
 		logScale?: boolean;
+		playing?: boolean;
 		onwheel?: (delta: { x: number; y: number }, e: WheelEvent) => void;
 	} = $props();
 	const sampleSize = 512;
@@ -58,6 +60,7 @@
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
 	const yLimits = $derived(span1d(-0.5, 0.5));
+	let performanceSensitive = $state(false);
 
 	const cursorX = $derived(
 		cursor === null ? null : span.x.remapClamped(cursor, interiorScreenSpan.x)
@@ -98,7 +101,7 @@
 		}
 	};
 
-	const drawSpectrogramData = (context: CanvasRenderingContext2D) => {
+	const drawSpectrogramData = async (context: CanvasRenderingContext2D) => {
 		const width = screenSpan.x.size();
 		const height = screenSpan.y.size();
 		const localScreenSpan = span2d(0, width, 0, height);
@@ -122,51 +125,90 @@
 		}
 		let range = logScale ? span1d(-10, Math.log(peak)) : span1d(0, peak);
 		let mapping = span1d(0, 256);
-		for (let x = 0; x < width; x++) {
-			for (let y = 0; y < height; y++) {
-				const pos = localScreenSpan.remap(point(x, y), span);
-				const frequencyX = clamp(
-					Math.floor((pos.x * samplerate) / stride),
-					0,
-					frequencyData.length - 1
-				);
-				const frequencySlice = frequencyData[frequencyX];
-				const frequencyY = Math.floor(Math.abs(pos.y * fftSize));
-				if (frequencyY >= frequencySlice.length) {
-					continue;
+		const chunkSize = Math.max(Math.ceil(width / 16), 32);
+		let worstChunk = 0;
+		const promises = [];
+		for (let chunk = 0; chunk < width; chunk += chunkSize) {
+			const fillChunk = () => {
+				const drawStart = performance.now();
+
+				for (let x = chunk; x < Math.min(width, chunk + chunkSize); x++) {
+					for (let y = 0; y < height; y++) {
+						const pos = localScreenSpan.remap(point(x, y), span);
+						const frequencyX = clamp(
+							Math.floor((pos.x * samplerate) / stride),
+							0,
+							frequencyData.length - 1
+						);
+						const frequencySlice = frequencyData[frequencyX];
+						const frequencyY = Math.floor(Math.abs(pos.y * fftSize));
+						if (frequencyY >= frequencySlice.length) {
+							continue;
+						}
+						const value = frequencySlice[frequencyY];
+						const mappedValue = logScale ? Math.log(value) : value;
+						const mapped = Math.max(0, Math.floor(range.remap(mappedValue, mapping)));
+						setPixel(x, y, mapped, mapped, mapped);
+					}
 				}
-				const value = frequencySlice[frequencyY];
-				const mappedValue = logScale ? Math.log(value) : value;
-				const mapped = Math.max(0, Math.floor(range.remap(mappedValue, mapping)));
-				setPixel(x, y, mapped, mapped, mapped);
-			}
+				const drawEnd = performance.now();
+				const drawDelta = drawEnd - drawStart;
+				worstChunk = Math.max(worstChunk, drawDelta);
+			};
+			const timeout = (chunk / chunkSize) * 2;
+			promises.push(
+				new Promise<void>((resolve) =>
+					setTimeout(() => {
+						fillChunk();
+						resolve();
+					}, timeout)
+				)
+			);
 		}
+
+		await Promise.all(promises);
 		context.putImageData(image, axisSizeY, 0);
 		updateVersion = data.updateVersion;
 		drawn = span;
+		if (worstChunk > 1000 / 30) {
+			performanceSensitive = true;
+		} else if (worstChunk < 1000 / 60) {
+			performanceSensitive = false;
+		}
 	};
 
-	const updateSpectrogramThrottled = throttle((span: Span2D, updateVersion: number) => {
+	const updateSpectrogramDirect = (span: Span2D, updateVersion: number) => {
 		const context = canvas.getContext('2d');
 		if (!context) {
 			return;
 		}
 		if (span !== drawn || updateVersion !== data.updateVersion) {
-			context.clearRect(0, 0, width, height);
+			context.clearRect(0, 0, axisSizeY, height - axisSizeX);
+			context.clearRect(0, height - axisSizeX, width, axisSizeX);
 			drawAxes(context, {
 				span: span2dFromSpans(span.x, frequencySpan),
 				sizeX: axisSizeX,
-				sizeY: axisSizeY
+				sizeY: axisSizeY,
+				maxInteriorDepth: -1
 			});
 			updateSpectrogramData();
 			drawSpectrogramData(context);
 		}
-	}, 100);
+	};
+
+	const updateSpectrogramThrottled = throttle(updateSpectrogramDirect, 100);
+	const updateSpectrogramSlow = $derived(
+		throttle(updateSpectrogramDirect, performanceSensitive ? 1000 : 100)
+	);
 
 	const updateSpectrogramDebounced = debounce(updateSpectrogramThrottled, 100);
 
 	$effect(() => {
-		updateSpectrogramDebounced(span, data.updateVersion);
+		if (playing) {
+			updateSpectrogramSlow(span, data.updateVersion);
+		} else {
+			updateSpectrogramDebounced(span, data.updateVersion);
+		}
 	});
 
 	onMount(() => {

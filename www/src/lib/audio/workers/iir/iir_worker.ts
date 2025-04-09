@@ -8,13 +8,13 @@ function applyIir(filter: Float32Array, input: Float32Array, output: Float32Arra
     const mid = filter.length / 2;
     for (let frame = 0; frame < input.length; frame++) {
         let acc = 0;
-        for (let idx = 0; idx < mid; idx++) {
-            const forward = filter[idx];
-            const backward = filter[idx + mid];
-            if (idx > frame) {
-                acc += prevInput[MAX_FILTER_SIZE - idx] * forward - prevOutput[MAX_FILTER_SIZE - idx] * backward;
+        for (let delay = 0; delay < mid; delay++) {
+            const forward = filter[delay];
+            const backward = filter[delay + mid];
+            if (delay > frame) {
+                acc += prevInput[MAX_FILTER_SIZE + frame - delay] * forward - prevOutput[MAX_FILTER_SIZE + frame - delay] * backward;
             } else {
-                acc += input[frame - idx] * forward - output[frame - idx] * backward;
+                acc += input[frame - delay] * forward - output[frame - delay] * backward;
             }
         }
         output[frame] = acc;

@@ -20,45 +20,26 @@
 		data = $bindable(new SampleData()),
 		filteredData,
 		filter,
+		cursor = $bindable(null),
 		span = $bindable(span2d(0, 1, -1, 1)),
 		frequencySpan = $bindable(span1d(0, data.samplerate / 2)),
+		playing = false,
 		onData
 	}: {
 		data?: SampleData;
 		filteredData?: SampleData;
 		filter?: IirDigital;
 		span?: Span2D;
+		cursor?: number | null;
+		playing?: boolean;
 		frequencySpan?: Span1D;
 		onData?: (sample: SampleData) => void;
 	} = $props();
-
-	let cursor: number | null = $state(null);
-	let filterChanged = $state(0);
-	let player: PlayerWithFilter = $state(
-		new PlayerWithFilter(filter, {
-			callback: ({ remaining }) => {
-				if (!remaining) {
-					const now = Date.now();
-					if (now - filterChanged < 3000) {
-						setTimeout(() => player.play(data), 250);
-					}
-				}
-			}
-		})
-	);
-
-	$effect(() => {
-		if (!filter) {
-			return;
-		}
-		player.setFilter(filter);
-		filterChanged = Date.now();
-	});
 </script>
 
 <div class="stack">
 	<div class="audio">
-		<Waveform {data} {filteredData} bind:span bind:cursor height={250} />
+		<Waveform {data} {filteredData} bind:span bind:cursor height={250} {playing} />
 		<Spectrogram
 			height={250}
 			data={filteredData ?? data}
@@ -69,6 +50,7 @@
 				span = span2dFromSpans(newSpan.x, span.y);
 			}}
 			bind:cursor
+			{playing}
 		/>
 	</div>
 	<div class="buttons">
@@ -88,14 +70,6 @@
 				onData?.(sample);
 			}}
 		/>
-		<Button
-			slim
-			onclick={() => {
-				player.play(data);
-			}}
-		>
-			<PlayPixel />
-		</Button>
 
 		<div class="spacer"></div>
 

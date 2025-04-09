@@ -94,4 +94,40 @@ export class PlayerWithFilter {
         }
         source.start();
     }
+
+    async pause() {
+        if (!this.audio) {
+            return;
+        }
+        const { context, gain, controllerNode } = this.audio;
+        gain.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
+        controllerNode.port.postMessage({ play: false });
+    }
+
+    async resume() {
+        if (!this.audio) {
+            return;
+        }
+        const { context, gain, controllerNode } = this.audio;
+        gain.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
+        controllerNode.port.postMessage({ play: true });
+    }
+
+    async seek(frame: number) {
+        if (!this.audio) {
+            return;
+        }
+        const { controllerNode } = this.audio;
+        controllerNode.port.postMessage({ seek: frame });
+    }
+
+    async stop() {
+        if (!this.audio) {
+            return;
+        }
+        const { context, gain, controllerNode } = this.audio;
+        gain.gain.linearRampToValueAtTime(0.0, context.currentTime + 0.1);
+        controllerNode.port.postMessage({ play: false, seek: 0 });
+    }
+
 }

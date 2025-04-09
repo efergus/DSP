@@ -25,8 +25,8 @@
 	const whatever = 0.1;
 	const whatever2 = 0.1;
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
-	const sample_digital_filter = $derived(initialFilter.to_digital_bilinear());
-	let roots: IirRoots = $state(new IirRoots(filterRoots(initialFilter)));
+	const sample_digital_filter = initialFilter.to_digital_bilinear();
+	let roots: IirRoots = new IirRoots(filterRoots(initialFilter));
 
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
@@ -54,9 +54,6 @@
 	});
 	const gain = $derived(digital_filter.gain);
 
-	$effect(() => {
-		roots.setSPlane(filterRoots(sample_digital_filter));
-	});
 	$effect(() => {
 		onFilterChange?.(digital_filter);
 		player.setFilter(digital_filter);
@@ -99,23 +96,29 @@
 	<div style:height="250px">
 		<p>Gain: {gain.toPrecision(3)}</p>
 	</div>
-	<div>
+	<div class="shelf">
 		<PoleZeroEditor
 			bind:roots={() => roots.sPlane, (value) => roots.setSPlane(value)}
-			span={span2d(-1, 0.1, frequencySpan.start, frequencySpan.end)}
+			span={span2d(-1, 0.1, frequencySpan.start * 2 * Math.PI, frequencySpan.end * 2 * Math.PI)}
 		/>
 		<PoleZeroEditor
 			bind:roots={() => roots.zPlane, (value) => roots.setZPlane(value)}
 			zPlane={true}
 			span={span2d(-1.2, 1.2, -1.2, 1.2)}
 		/>
-		<FilterDetails filter={digital_filter} />
 	</div>
+	<FilterDetails filter={digital_filter} />
 </div>
 
 <style lang="less">
 	div.stack {
-		flex-direction: row;
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.shelf {
+		display: flex;
 		gap: 6px;
 	}
 </style>

@@ -34,7 +34,8 @@ export type MouseOptions = {
     remap?: Span2D | ((point: Point) => Point),
     state?: SavedMouseState,
     target?: HTMLElement,
-    clickMovementThreshold?: number
+    clickMovementThreshold?: number,
+    clickDuration?: number
 }
 
 export type MouseStateHandler = (state: MouseState) => void;
@@ -73,6 +74,7 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
         if (!rect) {
             throw new Error("Could not get target rect!");
         }
+        const { clickDuration = 400 } = options;
         let click = false;
         let down = !!(event.buttons & 1);
         let edgeUp = false;
@@ -98,7 +100,7 @@ export function mouseHandler(handler: MouseStateHandler, options: MouseOptions =
             edgeDown = true;
         }
         if (internalState.down && !down) {
-            click = internalState.moved < clickMovementThreshold;
+            click = internalState.moved < clickMovementThreshold && now - internalState.startTime < clickDuration;
             edgeUp = true;
         }
         if (!internalState.down && !down) {

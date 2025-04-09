@@ -481,3 +481,15 @@ export function z2s_bilinear(z: Complex, T = 1, freq = 0) {
         complex_add(z, complex(1))
     ), coeffecient)
 }
+
+export function s2z_direct(s: Complex, T = 1) {
+    const radius = Math.exp(s.re * T);
+    const angle = s.im * T;
+    return complex_polar(angle, radius);
+}
+
+export function z2s_direct(z: Complex, T = 1) {
+    const re = Math.log(complex_norm(z)) / T;
+    const im = complex_phase(z) / T;
+    return complex(re, im);
+}

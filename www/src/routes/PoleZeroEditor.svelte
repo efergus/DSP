@@ -35,7 +35,7 @@
 		{height}
 		{zPlane}
 	/>
-	<div>
+	<!-- <div>
 		{#each roots as _, index}
 			<RootEditor
 				polar={zPlane}
@@ -57,7 +57,7 @@
 				}}
 			/>
 		{/each}
-	</div>
+	</div> -->
 </div>
 
 <style lang="less">

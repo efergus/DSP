@@ -14,6 +14,7 @@
 	import { mouseDispatch, type MouseState } from '$lib/input/mouse';
 	import type { Root } from '$lib/dsp/iir';
 	import { point } from '$lib/math/point';
+	import { drawAxes } from '$lib/graphics/axes';
 
 	export type ComplexMouseState = {
 		complexPos: Complex;
@@ -31,6 +32,8 @@
 		pole_size = 8,
 		hover_size = 16,
 		zPlane = false,
+		axisSizeX = 36,
+		axisSizeY = 48,
 		span
 	}: {
 		roots: Root[];
@@ -43,23 +46,29 @@
 		pole_size?: number;
 		hover_size?: number;
 		zPlane?: boolean;
+		axisSizeX?: number;
+		axisSizeY?: number;
 	} = $props();
 
-	const screenSpan = $derived(span2d(0, width, height, 0));
+	if (zPlane) {
+		axisSizeY = axisSizeX;
+	}
+	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
 	const poles = $derived(roots.filter((r) => r.degree < 0));
 	const zeros = $derived(roots.filter((r) => r.degree > 0));
-	const selectThreshold = $derived(screenSpan.x.remapSize(hover_size / 2, span.x));
+	const selectThreshold = $derived(screenSpan.x.remapSize(hover_size * 2, span.x));
 
+	let activeBefore: number | null = $state(null);
 	let mouseDragOffset: Complex = $state(complex());
 
 	let canvas: HTMLCanvasElement;
 
-	const clear = (context: CanvasRenderingContext2D) => {
-		context.fillStyle = 'rgb(220 220 220)';
+	const clear = (context: CanvasRenderingContext2D, color = 'white') => {
+		context.fillStyle = color;
 		context.fillRect(0, 0, canvas.width, canvas.height);
 	};
 
-	const drawAxes = (context: CanvasRenderingContext2D) => {
+	const drawMainAxes = (context: CanvasRenderingContext2D) => {
 		const top = screenSpan.y.min;
 		const left = screenSpan.x.start;
 		const width = screenSpan.x.size();
@@ -110,6 +119,8 @@
 	};
 
 	const drawUnitCircle = (context: CanvasRenderingContext2D) => {
+		context.fillStyle = 'rgb(235 235 235)';
+		context.fillRect(axisSizeY, 0, width - axisSizeY, height - axisSizeX);
 		drawCircle(context, complex(0, 0), {
 			radius: span.x.remapSize(1, screenSpan.x),
 			strokeStyle: 'black',
@@ -124,12 +135,36 @@
 		poles: Root[],
 		hover: Complex | null
 	) => {
-		clear(context);
+		clear(context, 'white');
 		if (zPlane) {
 			drawUnitCircle(context);
+			drawAxes(context, {
+				span,
+				sizeX: axisSizeX,
+				sizeY: axisSizeY,
+				maxDepth: 1.4,
+				maxTextDepth: -1,
+				maxInteriorDepth: -1
+			});
+		} else {
+			drawAxes(context, {
+				span,
+				sizeX: axisSizeX,
+				sizeY: axisSizeY,
+				maxDepth: 1.4,
+				maxTextDepth: 1.0,
+				maxInteriorDepth: 1
+			});
 		}
-		drawAxes(context);
+		drawMainAxes(context);
 
+		// create clip rect
+		context.save();
+		context.beginPath();
+		context.rect(axisSizeY, 0, width - axisSizeY, height - axisSizeX);
+		context.clip();
+
+		// draw zeros and poles
 		if (hover) {
 			drawCircle(context, hover, { radius: hover_size / 2, fillStyle: 'rgba(0, 0, 0, 0.2)' });
 			drawCircle(context, complex_conjugate(hover), {
@@ -147,6 +182,7 @@
 			fillStyle: 'red',
 			radius: pole_size / 2
 		});
+		context.restore();
 	};
 
 	const closestPoint = (pos: Complex, arr: Root[], threshold = selectThreshold): number => {
@@ -175,13 +211,9 @@
 	};
 
 	const sPlaneLimit = (pos: Complex): Complex => {
-		if (pos.im < 0) {
-			pos = complex(pos.re, 0);
-		}
-		if (pos.re > 0) {
-			pos = complex(0, pos.im);
-		}
-		return pos;
+		pos = complex(Math.min(pos.re, 0), Math.max(pos.im, 0));
+		const clamped = span.clamp(point(pos.re, pos.im));
+		return complex(clamped.x, clamped.y);
 	};
 
 	const limitFn = $derived(zPlane ? zPlaneLimit : sPlaneLimit);
@@ -192,16 +224,16 @@
 	};
 
 	const handleMouse = (pos: Complex, delta: Complex, state: MouseState) => {
-		const activeBefore = active;
 		// hover
 		if (state.edgeDown) {
+			activeBefore = active;
 			let closest = closestPoint(pos, roots);
 			active = closest >= 0 ? closest : null;
 			if (active !== null) {
 				mouseDragOffset = complex_sub(roots[active].val, pos);
 			}
 		}
-		// click to add or delete
+		// click to add, change, or delete
 		if (state.click) {
 			if (active === null) {
 				// did not click on a root, add a new root
@@ -213,11 +245,21 @@
 					}
 				]);
 			} else if (active === activeBefore) {
-				// clicked on active root, delete it
-				const newRoots = roots.slice();
-				newRoots.splice(active, 1);
-				roots = newRoots;
-				active = null;
+				// if root is a zero, change it to a pole
+				if (roots[active].degree > 0) {
+					const newRoots = roots.slice();
+					newRoots[active] = {
+						...newRoots[active],
+						degree: -1
+					};
+					roots = newRoots;
+				} else {
+					// clicked on active root, delete it
+					const newRoots = roots.slice();
+					newRoots.splice(active, 1);
+					roots = newRoots;
+					active = null;
+				}
 			}
 		}
 		// click and drag

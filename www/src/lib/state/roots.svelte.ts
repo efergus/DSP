@@ -1,4 +1,4 @@
-import { s2z_bilinear, z2s_bilinear, type Root } from "$lib/dsp/iir";
+import { s2z_bilinear, s2z_direct, z2s_bilinear, z2s_direct, type Root } from "$lib/dsp/iir";
 
 export class IirRoots {
     public sPlane: Root[] = $state([]);
@@ -26,13 +26,13 @@ export class IirRoots {
 function rootsFromDigitalRoots(digitalRoots: Root[]): Root[] {
     return digitalRoots.map(({ degree, val }) => ({
         degree,
-        val: z2s_bilinear(val)
+        val: z2s_direct(val)
     }));
 }
 
 function digitalRootsFromRoots(roots: Root[]): Root[] {
     return roots.map(({ degree, val }) => ({
         degree,
-        val: s2z_bilinear(val)
+        val: s2z_direct(val)
     }));
 }

@@ -408,7 +408,7 @@ export function butterworth(freq: number, order = 2) {
 }
 
 export function single_pole_bandpass(freq: number, width: number) {
-    return new IirContinuous([], addConjugates([complex(- width, freq)]))
+    return new IirContinuous([], addConjugates([complex(- width, freq * 2 * Math.PI)]))
 }
 
 export function single_pole_bandstop_digital(freq: number, width: number) {
@@ -416,7 +416,7 @@ export function single_pole_bandstop_digital(freq: number, width: number) {
 }
 
 export function single_pole_bandpass_digital(freq: number, width: number) {
-    return new IirDigital(addConjugates([complex_polar(freq, 0.95 - width)]), addConjugates([complex_polar(freq, 0.95)]))
+    return new IirDigital(addConjugates([complex_polar(freq, 1 - width)]), addConjugates([complex_polar(freq, 1)]))
 }
 
 export function filterRoots(filter: Iir): Root[] {

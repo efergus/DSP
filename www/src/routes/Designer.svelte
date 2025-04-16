@@ -3,6 +3,7 @@
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
 	import AudioPlayButton from '$lib/components/audio/AudioPlayButton.svelte';
 	import Tape from '$lib/components/audio/Tape.svelte';
+	import FilterCreator from '$lib/components/filters/FilterCreator.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import type { IirDigital } from '$lib/dsp/iir';
 	import { squareSample } from '$lib/dsp/samples';
@@ -24,6 +25,7 @@
 	let filteredData: SampleData = $state(initialSample);
 	let frequencySpan = $state(span1d(0, 0.5));
 	let filter: IirDigital | undefined = $state(undefined);
+	let standardFilter: IirDigital | undefined = $state(undefined);
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
@@ -113,9 +115,15 @@
 		{data}
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
+		sampleFilter={standardFilter}
 		onFilterChange={(value) => (filter = value)}
 		onFilteredData={(sample) => (filteredData = sample)}
-	/>
+	>
+		<FilterCreator
+			samplerate={data.samplerate}
+			onFilterChange={(value) => (standardFilter = value)}
+		/>
+	</IirFilterEditor>
 </div>
 
 <style>

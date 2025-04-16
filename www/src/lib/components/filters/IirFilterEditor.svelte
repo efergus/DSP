@@ -4,32 +4,36 @@
 	import { span2d, type Span1D, type Span2D } from '$lib/math/span';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import FilterDetails from './FilterDetails.svelte';
-	import { onMount } from 'svelte';
+	import { onMount, type Snippet } from 'svelte';
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
-	import { IirRoots } from '$lib/state/roots.svelte';
+	import { IirRootsState } from '$lib/state/roots.svelte';
 
 	let {
 		data,
 		span = $bindable(),
 		frequencySpan = $bindable(),
+		sampleFilter,
 		onFilterChange,
-		onFilteredData
+		onFilteredData,
+		children
 	}: {
 		data: SampleData;
 		span: Span2D;
 		frequencySpan: Span1D;
+		sampleFilter?: IirDigital;
 		onFilterChange?: (filter: IirDigital) => void;
 		onFilteredData?: (sample: SampleData) => void;
+		children?: Snippet;
 	} = $props();
 
 	const whatever = 0.1;
 	const whatever2 = 0.1;
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
-	const sample_digital_filter = initialFilter.to_digital_bilinear();
-	let roots: IirRoots = new IirRoots(filterRoots(initialFilter));
+	let roots: IirRootsState = new IirRootsState(filterRoots(initialFilter));
 
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
+	let previousSampleFilter: IirDigital | null = $state(null);
 	let filteredData = $state(new SampleData());
 	let filterChanged = $state(0);
 	let player: PlayerWithFilter = $state(
@@ -58,6 +62,18 @@
 		onFilterChange?.(digital_filter);
 		player.setFilter(digital_filter);
 		filterChanged = Date.now();
+	});
+
+	const updateRoots = (controlledFilter: IirDigital) => {
+		const newRoots = filterRoots(controlledFilter);
+		roots.setZPlane(newRoots);
+	};
+
+	$effect(() => {
+		if (sampleFilter && sampleFilter !== previousSampleFilter) {
+			updateRoots(sampleFilter);
+			previousSampleFilter = sampleFilter;
+		}
 	});
 
 	const updateFilteredData = (sample: SampleData, filter: IirDigital) => {
@@ -95,6 +111,7 @@
 <div class="stack">
 	<div style:height="250px">
 		<p>Gain: {gain.toPrecision(3)}</p>
+		{@render children?.()}
 	</div>
 	<div class="shelf">
 		<PoleZeroEditor

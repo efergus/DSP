@@ -1,6 +1,6 @@
 import { s2z_bilinear, s2z_direct, z2s_bilinear, z2s_direct, type Root } from "$lib/dsp/iir";
 
-export class IirRoots {
+export class IirRootsState {
     public sPlane: Root[] = $state([]);
     public zPlane: Root[] = $state([]);
 

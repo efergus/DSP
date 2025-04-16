@@ -35,34 +35,16 @@
 	let previousFilter: IirDigital | null = $state(null);
 	let previousSampleFilter: IirDigital | null = $state(null);
 	let filteredData = $state(new SampleData());
-	let filterChanged = $state(0);
-	let player: PlayerWithFilter = $state(
-		new PlayerWithFilter(undefined, {
-			callback: ({ remaining }) => {
-				if (!remaining) {
-					const now = Date.now();
-					if (now - filterChanged < 3000) {
-						setTimeout(() => player.play(data), 250);
-					}
-				}
-			}
-		})
-	);
 
-	const digital_filter = $derived.by(() => {
+	const computeDigitalFilter = (roots: IirRootsState) => {
 		const baseFilter = IirDigital.from_roots(roots.zPlane, 1);
 		const peakResponseFreq = baseFilter.max_frequency_response();
 		const peakResponse = baseFilter.frequency_response_norm(peakResponseFreq);
 		baseFilter.gain = 1 / peakResponse;
 		return baseFilter;
-	});
-	const gain = $derived(digital_filter.gain);
+	};
 
-	$effect(() => {
-		onFilterChange?.(digital_filter);
-		player.setFilter(digital_filter);
-		filterChanged = Date.now();
-	});
+	const digital_filter = $derived(computeDigitalFilter(roots));
 
 	const updateRoots = (controlledFilter: IirDigital) => {
 		const newRoots = filterRoots(controlledFilter);
@@ -104,27 +86,31 @@
 		};
 		requestAnimationFrame(doFilterUpdate);
 	});
-
-	$inspect(roots);
 </script>
 
 <div class="stack">
 	<div style:height="250px">
-		<p>Gain: {gain.toPrecision(3)}</p>
 		{@render children?.()}
 	</div>
 	<div class="shelf">
 		<PoleZeroEditor
-			bind:roots={() => roots.sPlane, (value) => roots.setSPlane(value)}
+			bind:roots={() => roots.sPlane,
+			(value) => {
+				roots.setSPlane(value);
+				onFilterChange?.(computeDigitalFilter(roots));
+			}}
 			span={span2d(-1, 0.1, frequencySpan.start * 2 * Math.PI, frequencySpan.end * 2 * Math.PI)}
 		/>
 		<PoleZeroEditor
-			bind:roots={() => roots.zPlane, (value) => roots.setZPlane(value)}
+			bind:roots={() => roots.zPlane,
+			(value) => {
+				roots.setZPlane(value);
+				onFilterChange?.(computeDigitalFilter(roots));
+			}}
 			zPlane={true}
 			span={span2d(-1.2, 1.2, -1.2, 1.2)}
 		/>
 	</div>
-	<FilterDetails filter={digital_filter} />
 </div>
 
 <style lang="less">

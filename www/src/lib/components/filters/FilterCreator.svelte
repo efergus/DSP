@@ -13,7 +13,6 @@
 	let type = $state(FilterType.Pass);
 
 	const createFilter = (cutoff: number, width: number, order: number) => {
-		console.log(cutoff / samplerate, width / samplerate, order);
 		switch (type) {
 			case FilterType.Pass:
 				return single_pole_bandpass(cutoff / samplerate, width / samplerate);

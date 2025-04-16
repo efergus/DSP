@@ -47,13 +47,15 @@ export class Iir {
     declare zeros: Complex[];
     declare poles: Complex[];
     declare _gain: number;
+    declare cutoff: number;
 
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1) {
+    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
         this._forward = new Float32Array([1]);
         this._back = new Float32Array([1]);
         this.zeros = zeros;
         this.poles = poles;
         this._gain = gain;
+        this.cutoff = cutoff;
 
         this._calculateCoefficients();
     }
@@ -123,8 +125,8 @@ export type ApplyIirOptions = {
 }
 
 export class IirDigital extends Iir {
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1) {
-        super(zeros, poles, gain);
+    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
+        super(zeros, poles, gain, cutoff);
     }
 
     static from_roots(roots: Root[], gain = 1) {
@@ -356,8 +358,8 @@ export class IirDigital extends Iir {
 }
 
 export class IirContinuous extends Iir {
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1) {
-        super(zeros, poles, gain);
+    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
+        super(zeros, poles, gain, cutoff);
     }
 
     to_digital_bilinear(freq: number = 0): IirDigital {
@@ -400,9 +402,6 @@ export function butterworth(freq: number, order = 2) {
     let poles = [];
     for (let k = 1; k <= order; k++) {
         poles.push(complex_polar((2 * k + order - 1) * Math.PI / (2 * order), freq));
-        // if (Math.abs(poles[k - 1].im) < 1e-9) {
-        //     poles[k - 1].im = 0;
-        // }
     }
     return new IirContinuous([], poles, gain);
 }

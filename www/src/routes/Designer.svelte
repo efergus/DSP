@@ -4,6 +4,7 @@
 	import AudioPlayButton from '$lib/components/audio/AudioPlayButton.svelte';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import FilterCreator from '$lib/components/filters/FilterCreator.svelte';
+	import FilterDetails from '$lib/components/filters/FilterDetails.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import type { IirDigital } from '$lib/dsp/iir';
 	import { squareSample } from '$lib/dsp/samples';
@@ -18,7 +19,7 @@
 		DEFAULT_AUDIO_SAMPLERATE / 100,
 		DEFAULT_AUDIO_SAMPLERATE,
 		DEFAULT_AUDIO_SAMPLERATE * initialDuration,
-		0.8
+		0.75
 	);
 	let data: SampleData = $state(initialSample);
 	let lastData: SampleData = $state(initialSample);
@@ -86,21 +87,7 @@
 	let playing = $state(false);
 </script>
 
-<div>
-	<AudioPlayButton
-		{data}
-		{filter}
-		onFrame={(frame) => {
-			cursor = frame / data.samplerate;
-			if (span.x.end < cursor) {
-				span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
-			}
-			if (span.x.start > cursor) {
-				span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
-			}
-		}}
-		bind:playing
-	/>
+<div class="grid">
 	<Tape
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
@@ -119,17 +106,37 @@
 		onFilterChange={(value) => (filter = value)}
 		onFilteredData={(sample) => (filteredData = sample)}
 	>
-		<FilterCreator
-			samplerate={data.samplerate}
-			onFilterChange={(value) => (standardFilter = value)}
-		/>
+		{#if filter}
+			<FilterDetails {filter} />
+		{/if}
 	</IirFilterEditor>
+	<AudioPlayButton
+		{data}
+		{filter}
+		onFrame={(frame) => {
+			cursor = frame / data.samplerate;
+			if (span.x.end < cursor) {
+				span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
+			}
+			if (span.x.start > cursor) {
+				span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
+			}
+		}}
+		bind:playing
+	/>
+	<FilterCreator
+		samplerate={data.samplerate}
+		onFilterChange={(value) => {
+			standardFilter = value;
+			filter = value;
+		}}
+	/>
 </div>
 
 <style>
-	div {
-		display: flex;
-		flex-direction: row;
+	div.grid {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
 		gap: 6px;
 		padding: 6px;
 	}

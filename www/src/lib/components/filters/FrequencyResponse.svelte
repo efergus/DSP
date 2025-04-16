@@ -41,8 +41,8 @@
 </script>
 
 <div>
-	<Waveform data={response} span={frequencySpan} samplerate={samples} />
-	<Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} />
+	<Waveform data={response} span={frequencySpan} samplerate={samples} height={120} />
+	<Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} height={120} />
 	<!-- <button
 		onclick={() => {
 			impulse.fill(0);

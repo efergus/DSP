@@ -1,6 +1,5 @@
-import { SampleData, SampleSlice, SampleView, type NumArr, type Sample } from "$lib/audio/sample";
-import type { P } from "vitest/dist/chunks/environment.d8YfPkTm.js";
-import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_norm2, complex_phase, complex_phase_2, complex_polar, complex_sub, complex_to_real, type Complex } from "./complex";
+import { SampleView, type NumArr, type Sample } from "$lib/audio/sample";
+import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_norm2, complex_phase, complex_phase_2, complex_polar, complex_pow, complex_sub, complex_to_real, type Complex } from "./complex";
 
 export const ZERO_STATE = -1;
 export const POLE_STATE = 1;
@@ -32,53 +31,60 @@ export function removeConjugates(roots: Complex[], threshold = 1e-12) {
     }
 }
 
-export function coefficients(roots: Complex[]): Complex[] {
+export function filterCoefficientsWithRoots(roots: Complex[]): Complex[] {
     return polynomial_with_roots(roots);
 }
 
-export function realCoefficients(roots: Complex[]): number[] {
-    return coefficients(roots).map(complex_to_real);
+export function realFilterCoefficientsWithRoots(roots: Complex[]): number[] {
+    return filterCoefficientsWithRoots(roots).map(complex_to_real);
 }
 
 export class Iir {
     declare _forward: Float32Array;
     declare _back: Float32Array;
     declare _state: number[];
-    declare zeros: Complex[];
-    declare poles: Complex[];
+    declare _zeros: Complex[];
+    declare _poles: Complex[];
     declare _gain: number;
     declare cutoff: number;
 
     constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
         this._forward = new Float32Array([1]);
         this._back = new Float32Array([1]);
-        this.zeros = zeros;
-        this.poles = poles;
+        this._zeros = zeros;
+        this._poles = poles;
         this._gain = gain;
         this.cutoff = cutoff;
 
         this._calculateCoefficients();
     }
 
-    setZeros(zeros: Complex[]) {
-        this.zeros = zeros;
+    set zeros(zeros: Complex[]) {
+        this._zeros = zeros;
         this._calculateCoefficients();
     }
 
-    setPoles(poles: Complex[]) {
-        this.poles = poles;
+    set poles(poles: Complex[]) {
+        this._poles = poles;
         this._calculateCoefficients();
+    }
+
+    get zeros(): Complex[] {
+        return this._zeros;
+    }
+
+    get poles(): Complex[] {
+        return this._poles;
     }
 
     _calculateCoefficients() {
         const N = this.order() + 1;
         this._forward = new Float32Array(N);
         this._back = new Float32Array(N);
-        // this._forward = coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain);
-        // this._back = coefficients(this.poles).map(complex_to_real);
-        const back = coefficients(this.poles).map(complex_to_real)
+        const back = filterCoefficientsWithRoots(this.poles).map(complex_to_real);
+        const forward = filterCoefficientsWithRoots(this.zeros).map(complex_to_real);
         this._back.set(back.map((val) => val / back[0]));
-        this._forward.set(coefficients(this.zeros).map((val) => complex_to_real(val) * this.gain / back[0]));
+        this._forward.set(forward.map((val) => val * this.gain / back[0]));
     }
 
     order(): number {
@@ -97,26 +103,34 @@ export class Iir {
     rawCoefficients(): Float32Array {
         const size = Math.max(this._forward.length, this._back.length);
         const coefficients = new Float32Array(size * 2);
-        coefficients.set(this._forward);
-        coefficients.set(this._back, size);
+        for (let idx = 0; idx < size; idx++) {
+            coefficients[idx * 2] = this._forward[idx];
+            coefficients[idx * 2 + 1] = this._back[idx];
+        }
         return coefficients;
     }
 
-    // response(zValue: Complex): Complex {
-    //     let numerator = complex(0);
-    //     for (let i = 0; i < this._forward.length; i++) {
-    //         let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-    //         numerator = complex_add(numerator, complex_mul_scalar(z_inv_i, this._forward[i]));
-    //     }
+    /**
+     * Computes the complex filter response at the complex point s
+     * 
+     * @param s The point on the complex plane to evaluate the response
+     * @returns The complex filter response at the point s
+     */
+    response(s: Complex): Complex {
+        let numerator = complex(0);
+        for (let i = 0; i < this._forward.length; i++) {
+            let s_inv_i = complex_pow(s, -i);
+            numerator = complex_add(numerator, complex_mul_scalar(s_inv_i, this._forward[i]));
+        }
 
-    //     let denominator = complex(0);
-    //     for (let i = 0; i < this._back.length; i++) {
-    //         let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-    //         denominator = complex_add(denominator, complex_mul_scalar(z_inv_i, this._back[i]));
-    //     }
+        let denominator = complex(0);
+        for (let i = 0; i < this._back.length; i++) {
+            let s_inv_i = complex_pow(s, -i);
+            denominator = complex_add(denominator, complex_mul_scalar(s_inv_i, this._back[i]));
+        }
 
-    //     return complex_div(numerator, denominator);
-    // }
+        return complex_div(numerator, denominator);
+    }
 }
 
 export type ApplyIirOptions = {
@@ -173,19 +187,8 @@ export class IirDigital extends Iir {
     }
 
     frequency_response(freq: number): Complex {
-        let numerator = complex(0);
-        for (let i = 0; i < this._forward.length; i++) {
-            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-            numerator = complex_add(numerator, complex_mul_scalar(z_inv_i, this._forward[i]));
-        }
-
-        let denominator = complex(0);
-        for (let i = 0; i < this._back.length; i++) {
-            let z_inv_i = complex_polar(-2 * Math.PI * freq * i)
-            denominator = complex_add(denominator, complex_mul_scalar(z_inv_i, this._back[i]));
-        }
-
-        return complex_div(numerator, denominator);
+        const z = complex_polar(2 * Math.PI * freq);
+        return this.response(z);
     }
 
     // use quotient rule (f/g)' = (f'g-fg')/(g^2)
@@ -372,11 +375,6 @@ export class IirContinuous extends Iir {
         let poles = transformed_poles.concat(new Array(N - this.poles.length).fill(complex(-1)));
 
         const filter = new IirDigital(zeros, poles, this.gain);
-        // const target_response = filter.response_norm(freq);
-        // const our_response = this.freq_response(freq);
-        // filter.gain = our_response / target_response;
-        // filter._calculateCoefficients();
-        // console.log("gains", dc_response, filter.gain, this.gain)
 
         return filter;
     }
@@ -449,19 +447,43 @@ function convolve_generic<T, U = T>(a: T[], b: T[], add: (a: U, b: U) => U, mul:
     return res;
 }
 
+/**
+ * A polynomial is an array of coefficients
+ * 
+ * The convention will be higher-order first (ie [2, 1] for 2x + 1).
+ * 
+ * @param T The type of the coefficients
+ */
 type Polynomial<T = number> = T[];
 
-// polynomial multiplication is a convolution
-// that also means the order of the arrays (high or low degree first)
-// does not matter as long as it is consistent
-// Explanation:
-// (x + 0) * (x + 2) => (x^2 + 2x + 0)
-// [1, 0] & [1, 2] => (1, 2, 0)
-// i.e. x (shiftted impulse) convolved with data shifts the data
+/**
+ * Multiplies two polynomials
+ * 
+ * Note: Polynomial multiplication is a convolution.
+ * That also means the ordering of the coefficients does not matter, as long as it is consistent.
+ * The convention I will use is higher-order first (ie [2, 1] for 2x + 1).
+ * 
+ * Here is an explanation of the convolution behavior:
+ * 
+ * (x + 0) * (x + 2) => (x^2 + 2x + 0)
+ * [1, 0] & [1, 2] => (1, 2, 0)
+ * i.e. x (shiftted impulse) convolved with data shifts the data
+ * 
+ * @param a The first polynomial
+ * @param b The second polynomial
+ * @returns The product of the two polynomials
+ */
 export function mul_polynomials(a: Polynomial, b: Polynomial) {
     return convolve_generic(a, b, (a, b) => a + b, (a, b) => a * b);
 }
 
+/**
+ * Multiplies two polynomials with complex coefficients
+ * 
+ * @param a The first polynomial
+ * @param b The second polynomial
+ * @returns The product of the two polynomials
+ */
 export function mul_complex_polynomials(a: Polynomial<Complex>, b: Polynomial<Complex>) {
     return convolve_generic(a, b, complex_add, complex_mul);
 }
@@ -475,7 +497,13 @@ export function polynomial_with_conjugate_roots(complex_roots: Complex[], real_r
     return res;
 }
 
-export function polynomial_with_roots(roots: Complex[]) {
+/**
+ * Returns a polynomial with the given roots
+ * 
+ * @param roots The roots of the polynomial
+ * @returns The polynomial with the given roots (an array of complex coefficients)
+ */
+export function polynomial_with_roots(roots: Complex[]): Polynomial<Complex> {
     // (x - root1)*(x - root2)...
     let parts = roots.map((root) => [complex(1), complex_mul_scalar(root, -1)]);
     let res = parts.reduce((acc, val) => {

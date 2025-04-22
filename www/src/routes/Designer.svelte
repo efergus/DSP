@@ -6,7 +6,7 @@
 	import FilterCreator from '$lib/components/filters/FilterCreator.svelte';
 	import FilterDetails from '$lib/components/filters/FilterDetails.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
-	import type { IirDigital } from '$lib/dsp/iir';
+	import type { IirContinuous, IirDigital } from '$lib/dsp/iir';
 	import { squareSample } from '$lib/dsp/samples';
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
@@ -26,7 +26,7 @@
 	let filteredData: SampleData = $state(initialSample);
 	let frequencySpan = $state(span1d(0, 0.5));
 	let filter: IirDigital | undefined = $state(undefined);
-	let standardFilter: IirDigital | undefined = $state(undefined);
+	let standardFilter: IirContinuous | undefined = $state(undefined);
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
@@ -128,7 +128,12 @@
 		samplerate={data.samplerate}
 		onFilterChange={(value) => {
 			standardFilter = value;
-			filter = value;
+			const digital = value.to_digital_bilinear();
+			const response = digital.frequency_response_norm(0);
+			if (response > 1) {
+				digital.gain /= response;
+			}
+			filter = digital;
 		}}
 	/>
 </div>

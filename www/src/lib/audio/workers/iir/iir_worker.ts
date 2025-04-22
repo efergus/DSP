@@ -5,12 +5,11 @@ export type AudioIirCommandArgs = {
 }
 
 function applyIir(filter: Float32Array, input: Float32Array, output: Float32Array, prevInput: Float32Array, prevOutput: Float32Array) {
-    const mid = filter.length / 2;
     for (let frame = 0; frame < input.length; frame++) {
         let acc = 0;
-        for (let delay = 0; delay < mid; delay++) {
-            const forward = filter[delay];
-            const backward = filter[delay + mid];
+        for (let delay = 0; delay * 2 < filter.length; delay++) {
+            const forward = filter[delay * 2];
+            const backward = filter[delay * 2 + 1];
             if (delay > frame) {
                 acc += prevInput[MAX_FILTER_SIZE + frame - delay] * forward - prevOutput[MAX_FILTER_SIZE + frame - delay] * backward;
             } else {

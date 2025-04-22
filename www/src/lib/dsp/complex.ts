@@ -110,3 +110,11 @@ export function complex_to_real(val: Complex) {
     }
     return val.re;
 }
+
+export function complex_pow(val: Complex, power: number) {
+    const polar = complex_to_polar(val);
+    return polar_to_complex({
+        norm: Math.pow(polar.norm, power),
+        phase: polar.phase * power
+    });
+}

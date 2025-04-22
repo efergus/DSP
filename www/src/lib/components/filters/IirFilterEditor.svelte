@@ -1,12 +1,18 @@
 <script lang="ts">
 	import { SampleData, type Sample } from '$lib/audio/sample';
-	import { filterRoots, IirDigital, single_pole_bandpass, type Root } from '$lib/dsp/iir';
+	import {
+		filterRoots,
+		IirContinuous,
+		IirDigital,
+		single_pole_bandpass,
+		type Root
+	} from '$lib/dsp/iir';
 	import { span2d, type Span1D, type Span2D } from '$lib/math/span';
 	import PoleZeroEditor from '../../../routes/PoleZeroEditor.svelte';
 	import FilterDetails from './FilterDetails.svelte';
 	import { onMount, type Snippet } from 'svelte';
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
-	import { IirRootsState } from '$lib/state/roots.svelte';
+	import { IirState } from '$lib/state/roots.svelte';
 
 	let {
 		data,
@@ -20,7 +26,7 @@
 		data: SampleData;
 		span: Span2D;
 		frequencySpan: Span1D;
-		sampleFilter?: IirDigital;
+		sampleFilter?: IirContinuous;
 		onFilterChange?: (filter: IirDigital) => void;
 		onFilteredData?: (sample: SampleData) => void;
 		children?: Snippet;
@@ -29,14 +35,14 @@
 	const whatever = 0.1;
 	const whatever2 = 0.1;
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
-	let roots: IirRootsState = new IirRootsState(filterRoots(initialFilter));
+	let roots: IirState = new IirState(filterRoots(initialFilter));
 
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
-	let previousSampleFilter: IirDigital | null = $state(null);
+	let previousSampleFilter: IirContinuous | null = $state(null);
 	let filteredData = $state(new SampleData());
 
-	const computeDigitalFilter = (roots: IirRootsState) => {
+	const computeDigitalFilter = (roots: IirState) => {
 		const baseFilter = IirDigital.from_roots(roots.zPlane, 1);
 		const peakResponseFreq = baseFilter.max_frequency_response();
 		const peakResponse = baseFilter.frequency_response_norm(peakResponseFreq);
@@ -46,9 +52,9 @@
 
 	const digital_filter = $derived(computeDigitalFilter(roots));
 
-	const updateRoots = (controlledFilter: IirDigital) => {
+	const updateRoots = (controlledFilter: IirContinuous) => {
 		const newRoots = filterRoots(controlledFilter);
-		roots.setZPlane(newRoots);
+		roots.setSPlane(newRoots);
 	};
 
 	$effect(() => {
@@ -97,15 +103,19 @@
 			bind:roots={() => roots.sPlane,
 			(value) => {
 				roots.setSPlane(value);
-				onFilterChange?.(computeDigitalFilter(roots));
+				const filter = computeDigitalFilter(roots);
+				roots.setDigital(filter);
+				onFilterChange?.(filter);
 			}}
-			span={span2d(-1, 0.1, frequencySpan.start * 2 * Math.PI, frequencySpan.end * 2 * Math.PI)}
+			span={span2d(-frequencySpan.size(), 0.1, frequencySpan.start, frequencySpan.end)}
 		/>
 		<PoleZeroEditor
 			bind:roots={() => roots.zPlane,
 			(value) => {
 				roots.setZPlane(value);
-				onFilterChange?.(computeDigitalFilter(roots));
+				const filter = computeDigitalFilter(roots);
+				roots.setDigital(filter);
+				onFilterChange?.(filter);
 			}}
 			zPlane={true}
 			span={span2d(-1.2, 1.2, -1.2, 1.2)}

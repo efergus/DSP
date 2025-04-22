@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE } from '$lib/audio/sample';
-	import { butterworth, IirDigital, single_pole_bandpass } from '$lib/dsp/iir';
+	import { butterworth, IirContinuous, IirDigital, single_pole_bandpass } from '$lib/dsp/iir';
 	import { FilterType } from './filter_creator';
 
 	const {
 		samplerate = $bindable(DEFAULT_AUDIO_SAMPLERATE),
 		onFilterChange
-	}: { samplerate?: number; onFilterChange?: (filter: IirDigital) => void } = $props();
+	}: { samplerate?: number; onFilterChange?: (filter: IirContinuous) => void } = $props();
 	let cutoff = $state(1000);
 	let width = $state(10);
 	let order = $state(1);
@@ -30,9 +30,8 @@
 
 	$effect(() => {
 		const filter = createFilter(cutoff, width, order);
-		const digitalFilter = filter?.to_digital_bilinear();
-		if (digitalFilter) {
-			onFilterChange?.(digitalFilter);
+		if (filter) {
+			onFilterChange?.(filter);
 		}
 	});
 </script>

@@ -1,7 +1,5 @@
 mod utils;
 
-use std::collections::HashMap;
-
 use realfft::RealFftPlanner;
 use rustfft::num_complex::Complex;
 use wasm_bindgen::prelude::*;
@@ -19,6 +17,7 @@ pub struct FftContext {
 #[wasm_bindgen]
 impl FftContext {
     pub fn new() -> Self {
+        utils::set_panic_hook();
         FftContext {
             planner: RealFftPlanner::new(),
         }

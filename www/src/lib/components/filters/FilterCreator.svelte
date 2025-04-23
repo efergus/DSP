@@ -7,10 +7,10 @@
 		samplerate = $bindable(DEFAULT_AUDIO_SAMPLERATE),
 		onFilterChange
 	}: { samplerate?: number; onFilterChange?: (filter: IirContinuous) => void } = $props();
-	let cutoff = $state(1000);
+	let cutoff = $state(2000);
 	let width = $state(10);
-	let order = $state(1);
-	let type = $state(FilterType.Pass);
+	let order = $state(4);
+	let type = $state(FilterType.Butterworth);
 
 	const createFilter = (cutoff: number, width: number, order: number) => {
 		switch (type) {

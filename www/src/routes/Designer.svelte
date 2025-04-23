@@ -1,13 +1,21 @@
 <script lang="ts">
-	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData, type Sample } from '$lib/audio/sample';
+	import AudioFileInput from '$lib/components/audio/AudioFileInput.svelte';
 	import AudioPlayButton from '$lib/components/audio/AudioPlayButton.svelte';
+	import Recorder from '$lib/components/audio/Recorder.svelte';
 	import Tape from '$lib/components/audio/Tape.svelte';
 	import FilterCreator from '$lib/components/filters/FilterCreator.svelte';
 	import FilterDetails from '$lib/components/filters/FilterDetails.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
+	import Button from '$lib/components/input/Button.svelte';
 	import type { IirContinuous, IirDigital } from '$lib/dsp/iir';
-	import { squareSample } from '$lib/dsp/samples';
+	import {
+		chirpSample,
+		phaseNoiseSample,
+		pinkNoiseSample,
+		squareSample,
+		whiteNoiseSample
+	} from '$lib/dsp/samples';
 	import { clamp } from '$lib/math/clamp';
 	import { isClose } from '$lib/math/float';
 	import { point } from '$lib/math/point';
@@ -96,7 +104,6 @@
 		{filter}
 		{cursor}
 		{playing}
-		onData={(sample) => (data = sample)}
 	/>
 	<IirFilterEditor
 		{data}
@@ -110,20 +117,64 @@
 			<FilterDetails {filter} />
 		{/if}
 	</IirFilterEditor>
-	<AudioPlayButton
-		{data}
-		{filter}
-		onFrame={(frame) => {
-			cursor = frame / data.samplerate;
-			if (span.x.end < cursor) {
-				span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
-			}
-			if (span.x.start > cursor) {
-				span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
-			}
-		}}
-		bind:playing
-	/>
+
+	<div>
+		<div class="buttons">
+			<AudioPlayButton
+				{data}
+				{filter}
+				onFrame={(frame) => {
+					cursor = frame / data.samplerate;
+					if (span.x.end < cursor) {
+						span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
+					}
+					if (span.x.start > cursor) {
+						span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
+					}
+				}}
+				bind:playing
+			/>
+			<AudioFileInput
+				onData={(sample) => {
+					data = sample;
+					const sampleSpan = sample.span();
+					const vertical = Math.max(Math.abs(sampleSpan.y.min), Math.abs(sampleSpan.y.max));
+					span = span2dFromSpans(sampleSpan.x, span1d(-vertical, vertical));
+				}}
+			/>
+
+			<Recorder
+				onData={(sample) => {
+					data = sample;
+				}}
+			/>
+
+			<Button
+				onclick={() => {
+					data = chirpSample(20, 4000);
+				}}
+				>Chirp
+			</Button>
+			<Button
+				onclick={() => {
+					data = whiteNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
+				}}
+				>Noise
+			</Button>
+			<Button
+				onclick={() => {
+					data = pinkNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
+				}}
+				>Pink noise
+			</Button>
+			<Button
+				onclick={() => {
+					data = phaseNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
+				}}
+				>Random phase
+			</Button>
+		</div>
+	</div>
 	<FilterCreator
 		samplerate={data.samplerate}
 		onFilterChange={(value) => {
@@ -144,5 +195,18 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 6px;
 		padding: 6px;
+	}
+
+	.buttons {
+		display: flex;
+		justify-content: stretch;
+		border: 1px solid black;
+
+		> :global(*) {
+			border: none;
+		}
+		> :global(:not(:last-child)) {
+			border-right: 1px solid silver;
+		}
 	}
 </style>

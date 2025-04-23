@@ -71,10 +71,12 @@
 	const cursorPos = $derived(cursor !== null && span.x.contains(cursor) ? cursor : null);
 	let cursorX = $derived(cursorPos === null ? null : span.x.remap(cursorPos, interiorScreenSpan.x));
 	let dataValueAtCursor = $derived(
-		cursorPos === null ? null : data.getInterpolated(cursorPos * samplerate)
+		cursorPos === null || cursorPos >= data.length
+			? null
+			: data.getInterpolated(cursorPos * samplerate)
 	);
 	let filteredDataValueAtCursor = $derived(
-		cursorPos === null || !filteredData
+		cursorPos === null || !filteredData || cursorPos >= filteredData.length
 			? null
 			: filteredData.getInterpolated(cursorPos * samplerate)
 	);
@@ -97,6 +99,9 @@
 		sample: Sample,
 		options: WaveformOptions = {}
 	) => {
+		if (!sample.length) {
+			return;
+		}
 		const { color = 'black', weight = 1 } = options;
 		const stroke = strokeWidth * weight;
 		context.save();
@@ -232,6 +237,8 @@
 		};
 		requestAnimationFrame(drawData);
 	});
+
+	$inspect(data);
 </script>
 
 <div>

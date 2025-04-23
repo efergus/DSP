@@ -40,20 +40,31 @@
 	let span = $state(span2d(0, window, -1, 1));
 	const minDuration = 1 / DEFAULT_AUDIO_SAMPLERATE;
 	let effectiveLimits = $state(span2d(0, initialDuration, -100, 100));
+
+	const playUpdateSpan = (data: SampleData) => {
+		const duration = data.duration();
+		const window = Math.max(span.x.size(), 1);
+		const start = Math.max(0, duration - window);
+		span = span2d(start, start + window, -1, 1);
+		effectiveLimits = span2d(0, duration, -100, 100);
+	};
+
 	onMount(() => {
 		let lastDuration = data.duration();
 		const updateSpan = () => {
 			const duration = data.duration();
+			// console.log(duration, lastDuration);
 			if (data !== lastData) {
 				lastData = data;
-				span = span2d(0, Math.min(span.x.size(), data.duration()), -1, 1);
-				effectiveLimits = span2d(0, data.duration(), -100, 100);
+				span = span2d(0, Math.max(Math.min(span.x.size(), data.duration()), window), -1, 1);
+				effectiveLimits = span2d(0, Math.max(data.duration(), span.x.end), -100, 100);
 			} else if (duration > lastDuration) {
-				let window = Math.min(span.x.size(), duration);
+				const window = Math.max(Math.min(span.x.size(), duration), 1);
 				const start = Math.max(0, duration - window);
 				span = span2d(start, start + window, -1, 1);
 				effectiveLimits = span2d(0, Math.max(duration, window), -100, 100);
 				lastDuration = duration;
+				// console.log(span);
 			}
 			requestAnimationFrame(updateSpan);
 		};
@@ -114,7 +125,7 @@
 		onFilteredData={(sample) => (filteredData = sample)}
 	>
 		{#if filter}
-			<FilterDetails {filter} />
+			<!-- <FilterDetails {filter} /> -->
 		{/if}
 	</IirFilterEditor>
 
@@ -146,6 +157,8 @@
 			<Recorder
 				onData={(sample) => {
 					data = sample;
+					playUpdateSpan(data);
+					// console.log(data);
 				}}
 			/>
 

@@ -107,6 +107,8 @@
 </script>
 
 <div class="grid">
+	<h2>Sample</h2>
+	<h2>Filter</h2>
 	<Tape
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
@@ -125,7 +127,7 @@
 		onFilteredData={(sample) => (filteredData = sample)}
 	>
 		{#if filter}
-			<!-- <FilterDetails {filter} /> -->
+			<FilterDetails {filter} />
 		{/if}
 	</IirFilterEditor>
 
@@ -203,6 +205,10 @@
 </div>
 
 <style>
+	h2 {
+		border-bottom: 1px solid black;
+	}
+
 	div.grid {
 		display: grid;
 		grid-template-columns: 1fr 1fr;

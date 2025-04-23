@@ -16,7 +16,7 @@ function applyIir(filter: Float32Array, input: Float32Array, output: Float32Arra
                 acc += input[frame - delay] * forward - output[frame - delay] * backward;
             }
         }
-        output[frame] = acc;
+        output[frame] = Math.max(-1, Math.min(1, acc));
     }
 }
 

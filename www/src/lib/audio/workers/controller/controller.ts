@@ -1,4 +1,6 @@
 
+import workerUrl from './controller_worker.ts?worker&url';
+
 export type AudioControllerCommandArgs = {
     sample?: Float32Array;
     seek?: number;
@@ -11,6 +13,6 @@ export type AudioControllerMessage = {
 }
 
 export let audioControllerInfo = {
-    url: new URL('./controller_worker.ts', import.meta.url),
+    url: workerUrl,
     name: 'controller_worker'
 }

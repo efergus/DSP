@@ -74,10 +74,20 @@ export class PlayerWithFilter {
         }, [coeffecients.buffer]);
     }
 
+    async setSample(sample: SampleData) {
+        this.sample = sample;
+        if (this.audio) {
+            const { controllerNode } = this.audio;
+            const buffer = sample.toFloat32Array();
+            controllerNode.port.postMessage({ sample: buffer }, [buffer.buffer])
+        }
+    }
+
     async play(sample: SampleData, options: PlayAudioOptions = {}) {
         let audio = this.audio;
         if (!audio) {
-            audio = await this.initializeContext();
+            this.audio = await this.initializeContext();
+            audio = this.audio;
         }
         const { context, gain, controllerNode } = audio;
 
@@ -87,8 +97,7 @@ export class PlayerWithFilter {
         source.connect(controllerNode);
 
         gain.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
-        const buffer = sample.toFloat32Array();
-        controllerNode.port.postMessage({ sample: buffer }, [buffer.buffer])
+        this.setSample(sample);
         controllerNode.port.onmessage = (msg: MessageEvent<AudioControllerMessage>) => {
             this.callback?.(msg.data);
         }

@@ -51,6 +51,12 @@
 	});
 
 	$effect(() => {
+		if (data) {
+			player.setSample(data);
+		}
+	});
+
+	$effect(() => {
 		if (playing) {
 			player.resume();
 		} else {

@@ -18,7 +18,7 @@
 		filter?: IirDigital;
 		playing?: boolean;
 		frame?: number;
-		onFrame?: (frame: number) => void;
+		onFrame?: (frame: number, player: PlayerWithFilter) => void;
 	} = $props();
 	let frameState = $state(0);
 	let filterChanged = $state(0);
@@ -38,8 +38,9 @@
 				}
 				frameState = data.length - remaining;
 				frame = frameState;
-				onFrame?.(frameState);
-			}
+				onFrame?.(frameState, player);
+			},
+			debug: true
 		})
 	);
 

@@ -53,13 +53,17 @@
 
 	let canvas: HTMLCanvasElement;
 
-	let styleSize = $state(point(width, height));
+	let pixelRatio = $state(1);
+	let styleSize = $derived(point(width, height));
+	let canvasSize = $derived(point(width * pixelRatio, height * pixelRatio));
 	let localMousePos = $state(point());
 	let mappedMousePos = $state(point());
 	let padding = $state(point());
 	const logScale = $derived(scale === AxisScale.Log && span.y.start > 0);
-	const interiorScreenSpan = $derived(span2d(0, width - axisSizeY, 0, height - axisSizeX));
-	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
+	const interiorScreenSpan = $derived(
+		span2d(0, canvasSize.x - axisSizeY, 0, canvasSize.y - axisSizeX)
+	);
+	const screenSpan = $derived(span2d(axisSizeY, canvasSize.x, canvasSize.y - axisSizeX, 0));
 	const screenMapX = $derived((value: number) => span.x.remap(value, screenSpan.x));
 	const screenMapY = $derived(
 		logScale
@@ -223,9 +227,6 @@
 	};
 
 	onMount(() => {
-		const pixelRatio = window.devicePixelRatio;
-		styleSize = point(width * pixelRatio, height * pixelRatio);
-
 		const context = canvas.getContext('2d');
 		if (!context) {
 			console.warn('No context!');
@@ -237,8 +238,6 @@
 		};
 		requestAnimationFrame(drawData);
 	});
-
-	$inspect(data);
 </script>
 
 <div>

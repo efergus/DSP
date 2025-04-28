@@ -39,7 +39,7 @@
 <div class="stack">
 	<div>
 		<label for="cutoff">Cutoff</label>
-		<input type="range" bind:value={cutoff} min="10" max={samplerate / 2} step="1" id="cutoff" />
+		<input type="range" bind:value={cutoff} min="200" max={samplerate / 2} step="1" id="cutoff" />
 		<p>{cutoff}</p>
 	</div>
 	<div>

@@ -12,21 +12,26 @@ type PlayerAudioState = {
 
 export type PlayerWithFilterOptions = {
     callback?: (data: AudioControllerMessage) => void;
+    debug?: boolean;
 }
 
 type PlayAudioOptions = {
     loop?: boolean;
 }
 
+let outputData: Float32Array[] = [];
+
 export class PlayerWithFilter {
     declare audio: PlayerAudioState | null;
     declare sample: SampleData;
     declare callback: ((data: AudioControllerMessage) => void) | null;
+    declare debug: boolean;
 
     constructor(filter?: IirDigital | Float32Array, options: PlayerWithFilterOptions = {}) {
         this.audio = null;
         this.sample = new SampleData();
         this.callback = options?.callback ?? null;
+        this.debug = options?.debug ?? false;
         if (filter) {
             this.setFilter(filter);
         }
@@ -51,6 +56,12 @@ export class PlayerWithFilter {
         filterNode.connect(gain);
         gain.connect(context.destination);
 
+        if (this.debug) {
+            filterNode.port.onmessage = (data) => {
+                outputData.push(data.data.output)
+            }
+        }
+
         this.audio = {
             context,
             controllerNode,
@@ -70,7 +81,8 @@ export class PlayerWithFilter {
             filter.rawCoefficients() : filter;
 
         audio.filterNode.port.postMessage({
-            filter: coeffecients
+            filter: coeffecients,
+            debug: this.debug
         }, [coeffecients.buffer]);
     }
 
@@ -101,7 +113,9 @@ export class PlayerWithFilter {
         controllerNode.port.onmessage = (msg: MessageEvent<AudioControllerMessage>) => {
             this.callback?.(msg.data);
         }
+
         source.start();
+        outputData = [];
     }
 
     async pause() {
@@ -139,4 +153,17 @@ export class PlayerWithFilter {
         controllerNode.port.postMessage({ play: false, seek: 0 });
     }
 
+    debugData() {
+        let length = 0;
+        for (const data of outputData) {
+            length += data.length;
+        }
+        const data = new Float32Array(length);
+        let offset = 0;
+        for (const chunk of outputData) {
+            data.set(chunk, offset);
+            offset += chunk.length;
+        }
+        return data;
+    }
 }

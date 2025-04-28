@@ -4,6 +4,7 @@
 	import AudioPlayButton from '$lib/components/audio/AudioPlayButton.svelte';
 	import Recorder from '$lib/components/audio/Recorder.svelte';
 	import Tape from '$lib/components/audio/Tape.svelte';
+	import Waveform from '$lib/components/audio/Waveform.svelte';
 	import FilterCreator from '$lib/components/filters/FilterCreator.svelte';
 	import FilterDetails from '$lib/components/filters/FilterDetails.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
@@ -32,6 +33,7 @@
 	let data: SampleData = $state(initialSample);
 	let lastData: SampleData = $state(initialSample);
 	let filteredData: SampleData = $state(initialSample);
+	let debugData: SampleData = $state(initialSample);
 	let frequencySpan = $state(span1d(0, 0.5));
 	let filter: IirDigital | undefined = $state(undefined);
 	let standardFilter: IirContinuous | undefined = $state(undefined);
@@ -136,13 +138,16 @@
 			<AudioPlayButton
 				{data}
 				{filter}
-				onFrame={(frame) => {
+				onFrame={(frame, player) => {
 					cursor = frame / data.samplerate;
 					if (span.x.end < cursor) {
 						span = span2dFromSpans(span.x.move(cursor - span.x.end), span.y);
 					}
 					if (span.x.start > cursor) {
 						span = span2dFromSpans(span.x.move(cursor - span.x.start), span.y);
+					}
+					if (frame > DEFAULT_AUDIO_SAMPLERATE) {
+						debugData = new SampleData(player.debugData());
 					}
 				}}
 				bind:playing
@@ -190,6 +195,7 @@
 			</Button>
 		</div>
 	</div>
+	<Waveform data={debugData} {span} />
 	<FilterCreator
 		samplerate={data.samplerate}
 		onFilterChange={(value) => {

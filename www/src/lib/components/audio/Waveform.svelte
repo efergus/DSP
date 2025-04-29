@@ -110,7 +110,7 @@
 		const stroke = strokeWidth * weight;
 		context.save();
 		context.beginPath();
-		context.rect(axisSizeY, 0, width - axisSizeY, height - axisSizeX);
+		context.rect(axisSizeY, 0, canvasSize.x - axisSizeY, canvasSize.y - axisSizeX);
 		context.clip();
 
 		context.beginPath();
@@ -128,13 +128,13 @@
 		let startIndex = Math.max(0, Math.floor(sampleStart));
 		const endIndex = Math.min(sample.length, Math.ceil(sampleEnd) + 1);
 
-		if (sampleSpan > width * 2) {
+		if (sampleSpan > canvasSize.x * 2) {
 			context.lineWidth = 1;
 
-			const chunkStride = sampleSpan / width;
+			const chunkStride = sampleSpan / canvasSize.x;
 			let lastMin = sample.get(0);
 			let lastMax = lastMin;
-			for (let chunk = 0; chunk < width; chunk++) {
+			for (let chunk = 0; chunk < canvasSize.x; chunk++) {
 				const base = Math.floor(screenSpan.x.remap(chunk, span.x) * samplerate);
 				if (base < 0 || base >= sample.length) {
 					continue;
@@ -196,7 +196,7 @@
 		padding = point(Math.floor(rect.x) - rect.x, Math.floor(rect.y) - rect.y);
 
 		context.fillStyle = 'rgb(255 255 255)';
-		context.fillRect(0, 0, width, height);
+		context.fillRect(0, 0, canvasSize.x, canvasSize.y);
 
 		drawAxes(context, { span, sizeX: axisSizeX, sizeY: axisSizeY });
 
@@ -245,8 +245,8 @@
 		bind:this={canvas}
 		style:width={`${styleSize.x}px`}
 		style:height={`${styleSize.y}px`}
-		{width}
-		{height}
+		width={canvasSize.x}
+		height={canvasSize.y}
 		onwheel={(e) => {
 			e.preventDefault();
 			const shiftKey = e.shiftKey;
@@ -315,8 +315,8 @@
 		class="cursor"
 		style:top="0px"
 		style:left={`${axisSizeY}px`}
-		style:width={`${width - axisSizeY}px`}
-		style:height={`${height - axisSizeX}px`}
+		style:width={`${styleSize.x - axisSizeY}px`}
+		style:height={`${styleSize.y - axisSizeX}px`}
 	>
 		{#if cursorX !== null}
 			<LongCursor x={cursorX} size={8} span={interiorScreenSpan} />

@@ -53,8 +53,7 @@
 	const digital_filter = $derived(computeDigitalFilter(roots));
 
 	const updateRoots = (controlledFilter: IirContinuous) => {
-		const newRoots = filterRoots(controlledFilter);
-		roots.setSPlane(newRoots);
+		roots.setContinuous(controlledFilter);
 	};
 
 	$effect(() => {
@@ -72,6 +71,9 @@
 			previousInput = sample;
 			previousFilter = filter;
 			filteredData = new SampleData();
+		}
+		if (startIndex >= sample.length) {
+			return;
 		}
 		filteredData.push(
 			filter.apply(sample.slice(startIndex), sample.slice(0, startIndex), filteredData)

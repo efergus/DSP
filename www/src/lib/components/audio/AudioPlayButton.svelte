@@ -2,7 +2,6 @@
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import { SampleData } from '$lib/audio/sample';
 	import { type IirDigital } from '$lib/dsp/iir';
-	import Circle from '$lib/icons/Circle.svelte';
 	import Pause from '$lib/icons/Pause.svelte';
 	import PlayPixel from '$lib/icons/PlayPixel.svelte';
 	import Button from '../input/Button.svelte';
@@ -40,7 +39,7 @@
 				frame = frameState;
 				onFrame?.(frameState, player);
 			},
-			debug: true
+			debug: false
 		})
 	);
 

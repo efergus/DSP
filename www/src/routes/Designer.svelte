@@ -28,7 +28,7 @@
 		DEFAULT_AUDIO_SAMPLERATE / 100,
 		DEFAULT_AUDIO_SAMPLERATE,
 		DEFAULT_AUDIO_SAMPLERATE * initialDuration,
-		0.75
+		0.5
 	);
 	let data: SampleData = $state(initialSample);
 	let lastData: SampleData = $state(initialSample);
@@ -195,7 +195,6 @@
 			</Button>
 		</div>
 	</div>
-	<Waveform data={debugData} {span} />
 	<FilterCreator
 		samplerate={data.samplerate}
 		onFilterChange={(value) => {

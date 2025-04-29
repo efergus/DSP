@@ -35,8 +35,14 @@ export class IirState {
     }
 
     setContinuous(filter: IirContinuous) {
+        const digital = filter.to_digital_bilinear();
         const roots = filterRoots(filter);
-        this.setSPlane(roots, filter.gain);
+        this.sPlane = roots;
+        const digitalRoots = filterRoots(digital);
+        this.zPlane = digitalRoots;
+        const gainChange = (filter.gain ?? this.sGain) / this.sGain;
+        this.sGain = this.sGain * gainChange;
+        this.zGain = this.zGain * gainChange;
     }
 
     setDigital(filter: IirDigital) {

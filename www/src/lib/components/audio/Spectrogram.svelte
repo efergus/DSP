@@ -236,7 +236,7 @@
 		onwheel={(e) => {
 			e.preventDefault();
 			const scale = Math.exp(-e.deltaY / 100);
-			if (isInHorizontalAxis(localMousePos)) {
+			if (isInHorizontalAxis(localMousePos) || isInBody(localMousePos)) {
 				span = span2dFromSpans(span.x.scale(scale, mappedMousePos.x), span.y);
 			} else {
 				span = span2dFromSpans(span.x, span.y.scale(scale, mappedMousePos.y).intersect(yLimits));

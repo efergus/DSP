@@ -271,6 +271,7 @@
 					span = span2dFromSpans(span.x, span.y.move(distance));
 				}
 			} else if ((isInBody(localMousePos) && shiftKey) || isInVerticalAxis(localMousePos)) {
+				// shift & body or vertical => zoom vertical
 				const yPos = mappedMousePos.y;
 				const scaleY = Math.exp(deltaY);
 				if (onZoom) {
@@ -279,6 +280,7 @@
 					span = span2dFromSpans(span.x, span.y.scale(scaleY, yPos));
 				}
 			} else {
+				// horizontal => zoom horizontal
 				const xPos = mappedMousePos.x;
 				const scaleX = Math.exp(deltaY);
 				if (onZoom) {

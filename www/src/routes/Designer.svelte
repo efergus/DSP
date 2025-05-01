@@ -22,6 +22,7 @@
 	import { point } from '$lib/math/point';
 	import { span1d, Span2D, span2d, span2dFromSpans } from '$lib/math/span';
 	import { onMount } from 'svelte';
+	import SampleSelector from './SampleSelector.svelte';
 
 	const initialDuration = 2;
 	const initialSample = squareSample(
@@ -169,30 +170,7 @@
 				}}
 			/>
 
-			<Button
-				onclick={() => {
-					data = chirpSample(20, 4000);
-				}}
-				>Chirp
-			</Button>
-			<Button
-				onclick={() => {
-					data = whiteNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
-				}}
-				>Noise
-			</Button>
-			<Button
-				onclick={() => {
-					data = pinkNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
-				}}
-				>Pink noise
-			</Button>
-			<Button
-				onclick={() => {
-					data = phaseNoiseSample(4 * DEFAULT_AUDIO_SAMPLERATE);
-				}}
-				>Random phase
-			</Button>
+			<SampleSelector />
 		</div>
 	</div>
 	<FilterCreator

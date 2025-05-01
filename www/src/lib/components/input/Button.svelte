@@ -42,6 +42,11 @@
 		}
 	}
 
+	button.selected {
+		background-color: black;
+		color: white;
+	}
+
 	div.pad {
 		padding-left: 8px;
 		padding-right: 8px;

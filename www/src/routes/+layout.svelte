@@ -4,6 +4,3 @@
 </script>
 
 <slot />
-
-<style lang="less">
-</style>

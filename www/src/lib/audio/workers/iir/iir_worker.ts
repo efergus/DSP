@@ -80,7 +80,6 @@ class AudioIir extends AudioWorkletProcessor {
             }
             if (applyIir(this.filter, input, output, this.storedInputs[index], this.storedOutputs[index])) {
                 clip = true;
-                console.log(input.slice(), output.slice())
             }
             this.storedInputs[index] = input.slice(input.length - MAX_FILTER_SIZE);
             this.storedOutputs[index] = output.slice(output.length - MAX_FILTER_SIZE);

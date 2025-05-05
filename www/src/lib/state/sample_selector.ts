@@ -1,9 +1,9 @@
 
 export enum SampleType {
-    SINE,
-    SQUARE,
-    SAWTOOTH,
-    TRIANGLE,
-    NOISE,
-    CHIRP
+    SINE = "Sine",
+    SQUARE = "Square",
+    SAWTOOTH = "Sawtooth",
+    TRIANGLE = "Triangle",
+    NOISE = "Noise",
+    CHIRP = "Chirp"
 };

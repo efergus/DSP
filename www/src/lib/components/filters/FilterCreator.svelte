@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { DEFAULT_AUDIO_SAMPLERATE } from '$lib/audio/sample';
 	import { butterworth, IirContinuous, IirDigital, single_pole_bandpass } from '$lib/dsp/iir';
+	import Slider from '../input/Slider.svelte';
 	import { FilterType } from './filter_creator';
 
 	const {
@@ -36,40 +37,34 @@
 	});
 </script>
 
-<div class="stack">
-	<div>
-		<label for="cutoff">Cutoff</label>
-		<input type="range" bind:value={cutoff} min="200" max={samplerate / 2} step="1" id="cutoff" />
-		<p>{cutoff}</p>
-	</div>
-	<div>
-		<label for="width">Width</label>
-		<input type="range" bind:value={width} min="1" max={samplerate / 2} step="1" id="width" />
-		<p>{width}</p>
-	</div>
-	<div>
-		<label for="order">Order</label>
-		<input type="range" bind:value={order} min="1" max="10" step="1" id="order" />
-		<p>{order}</p>
-	</div>
-	<div>
-		<label for="type">Type</label>
-		<select bind:value={type} id="type">
-			<option value={FilterType.Pass}>Simple Pass</option>
-			<option value={FilterType.Stop}>Simple Stop</option>
-			<option value={FilterType.Butterworth}>Butterworth</option>
-		</select>
-	</div>
+<div>
+	<label for="cutoff">Cutoff</label>
+	<Slider bind:value={cutoff} min={200} max={samplerate / 2} step={1} id="cutoff" />
+	<p>{cutoff} Hz</p>
+	<label for="width">Width</label>
+	<Slider bind:value={width} min={1} max={samplerate / 2} step={1} id="width" />
+	<p>{width} Hz</p>
+	<label for="order">Order</label>
+	<Slider bind:value={order} min={1} max={10} step={1} id="order" />
+	<p>{order}</p>
+	<label for="type">Type</label>
+	<select bind:value={type} id="type">
+		<option value={FilterType.Pass}>Simple Pass</option>
+		<option value={FilterType.Stop}>Simple Stop</option>
+		<option value={FilterType.Butterworth}>Butterworth</option>
+	</select>
 </div>
 
 <style lang="less">
 	div {
-		display: flex;
-		flex-direction: row;
+		display: grid;
+		grid-template-columns: 8ch 1fr 8ch;
+		align-items: center;
 		gap: 6px;
+		width: 100%;
 	}
 
-	.stack {
-		flex-direction: column;
+	p {
+		text-align: right;
 	}
 </style>

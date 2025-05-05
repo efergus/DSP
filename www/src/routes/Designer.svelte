@@ -66,9 +66,8 @@
 				const start = Math.max(0, duration - window);
 				span = span2d(start, start + window, -1, 1);
 				effectiveLimits = span2d(0, Math.max(duration, window), -100, 100);
-				lastDuration = duration;
-				// console.log(span);
 			}
+			lastDuration = duration;
 			requestAnimationFrame(updateSpan);
 		};
 		requestAnimationFrame(updateSpan);
@@ -107,6 +106,8 @@
 
 	let cursor: number | null = $state(null);
 	let playing = $state(false);
+
+	$inspect(span.x.size());
 </script>
 
 <div class="grid">
@@ -169,22 +170,28 @@
 					// console.log(data);
 				}}
 			/>
-
-			<SampleSelector />
 		</div>
+
+		<SampleSelector
+			onData={(sample) => {
+				data = sample;
+			}}
+		/>
 	</div>
-	<FilterCreator
-		samplerate={data.samplerate}
-		onFilterChange={(value) => {
-			standardFilter = value;
-			const digital = value.to_digital_bilinear();
-			const response = digital.frequency_response_norm(0);
-			if (response > 1) {
-				digital.gain /= response;
-			}
-			filter = digital;
-		}}
-	/>
+	<div>
+		<FilterCreator
+			samplerate={data.samplerate}
+			onFilterChange={(value) => {
+				standardFilter = value;
+				const digital = value.to_digital_bilinear();
+				const response = digital.frequency_response_norm(0);
+				if (response > 1) {
+					digital.gain /= response;
+				}
+				filter = digital;
+			}}
+		/>
+	</div>
 </div>
 
 <style>

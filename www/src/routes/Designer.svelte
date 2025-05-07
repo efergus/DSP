@@ -22,7 +22,9 @@
 	import { point } from '$lib/math/point';
 	import { span1d, Span2D, span2d, span2dFromSpans } from '$lib/math/span';
 	import { onMount } from 'svelte';
-	import SampleSelector from './SampleSelector.svelte';
+	import SampleSelector from './SampleOptions.svelte';
+	import SampleTypeOptions from './SampleTypeOptions.svelte';
+	import { SampleType } from '$lib/state/sample_selector';
 
 	const initialDuration = 2;
 	const initialSample = squareSample(
@@ -38,6 +40,7 @@
 	let frequencySpan = $state(span1d(0, 0.5));
 	let filter: IirDigital | undefined = $state(undefined);
 	let standardFilter: IirContinuous | undefined = $state(undefined);
+	let sampleType: SampleType = $state(SampleType.SQUARE);
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
@@ -106,8 +109,6 @@
 
 	let cursor: number | null = $state(null);
 	let playing = $state(false);
-
-	$inspect(span.x.size());
 </script>
 
 <div class="grid">
@@ -170,9 +171,12 @@
 					// console.log(data);
 				}}
 			/>
+
+			<SampleTypeOptions bind:value={sampleType} />
 		</div>
 
 		<SampleSelector
+			{sampleType}
 			onData={(sample) => {
 				data = sample;
 			}}

@@ -42,12 +42,14 @@
 	const fftSize = 1024;
 	const overlap = 256;
 
+	let styleSize = $state(point(width, height));
+	let canvasSize = $state(point(width, height));
+
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
 	const frequencySpan = $derived(span1d(span.y.start * samplerate, span.y.end * samplerate));
-	const screenSpan = $derived(span2d(axisSizeY, width, height - axisSizeX, 0));
+	const screenSpan = $derived(span2d(axisSizeY, canvasSize.x, canvasSize.y - axisSizeX, 0));
 	const interiorScreenSpan = $derived(span2d(0, screenSpan.x.size(), 0, screenSpan.y.size()));
-	let styleSize = $state(point(width, height));
 	let canvas: HTMLCanvasElement;
 	let currentSample: SampleData = $state(data);
 	let frequencyData: Float32Array[] = $state([]);
@@ -213,7 +215,8 @@
 
 	onMount(() => {
 		const pixelRatio = window.devicePixelRatio;
-		styleSize = point(width * pixelRatio, height * pixelRatio);
+		console.log(pixelRatio);
+		canvasSize = point(width * pixelRatio, height * pixelRatio);
 
 		const updateSpectrogramLoop = () => {
 			if (drawn && data.updateVersion !== updateVersion) {
@@ -231,8 +234,8 @@
 		bind:this={canvas}
 		style:width={`${styleSize.x}px`}
 		style:height={`${styleSize.y}px`}
-		{width}
-		{height}
+		width={canvasSize.x}
+		height={canvasSize.y}
 		onwheel={(e) => {
 			e.preventDefault();
 			const scale = Math.exp(-e.deltaY / 100);

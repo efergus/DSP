@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/input/Button.svelte';
-	import { SampleType } from '$lib/state/sample_selector';
+	import { SAMPLE_TYPES, SampleType } from '$lib/state/sample_selector';
 	import SinWave from '$lib/icons/SinWave.svelte';
 	import SquareWave from '$lib/icons/SquareWave.svelte';
 	import SawWave from '$lib/icons/SawWave.svelte';
@@ -20,10 +20,10 @@
 	import { throttle } from '$lib/input/debounce';
 
 	let {
-		selected = $bindable(SampleType.SQUARE),
+		sampleType = SampleType.SINE,
 		onData
 	}: {
-		selected?: SampleType;
+		sampleType?: SampleType;
 		onData?: (sample: SampleData) => void;
 	} = $props();
 
@@ -34,17 +34,8 @@
 	let samplerate = $state(DEFAULT_AUDIO_SAMPLERATE);
 	let falloff = $state(0.0);
 
-	const sample_types = [
-		{ type: SampleType.SINE, name: 'Sine Wave', icon: SinWave },
-		{ type: SampleType.SQUARE, name: 'Square Wave', icon: SquareWave },
-		{ type: SampleType.SAWTOOTH, name: 'Sawtooth Wave', icon: SawWave },
-		{ type: SampleType.TRIANGLE, name: 'Triangle Wave', icon: TriangleWave },
-		{ type: SampleType.NOISE, name: 'Noise', icon: WhiteNoise },
-		{ type: SampleType.CHIRP, name: 'Chirp', icon: Chirp }
-	];
-
 	const sample_names = new Map(
-		sample_types.map((sample_type) => [sample_type.type, sample_type.name])
+		SAMPLE_TYPES.map((sample_type) => [sample_type.type, sample_type.name])
 	);
 
 	const setSample = (
@@ -55,7 +46,6 @@
 		amplitude: number,
 		falloff: number
 	) => {
-		selected = sample_type;
 		let sample: SampleData | undefined;
 		switch (sample_type) {
 			case SampleType.SINE:
@@ -91,29 +81,19 @@
 	const throttledSetSample = throttle(setSample, 200);
 
 	$effect(() => {
-		throttledSetSample(selected, frequency, end_frequency, duration, amplitude, falloff);
+		throttledSetSample(sampleType, frequency, end_frequency, duration, amplitude, falloff);
 	});
 </script>
 
-{#each sample_types as sample_type}
-	<Button
-		onclick={() => {
-			selected = sample_type.type;
-		}}
-		class={selected === sample_type.type ? 'selected' : ''}
-		title={sample_type.name}
-	>
-		<sample_type.icon />
-	</Button>
-{/each}
-
 <div class="box">
-	<h3>{sample_names.get(selected)}</h3>
+	<h3>{sample_names.get(sampleType)}</h3>
 	<div class="stack">
-		<label for="frequency">Frequency:</label>
-		<Slider id="frequency" bind:value={frequency} min={10} max={20000} step={1} />
-		<p>{frequency} Hz</p>
-		{#if selected === SampleType.CHIRP}
+		{#if sampleType !== SampleType.NOISE}
+			<label for="frequency">Frequency:</label>
+			<Slider id="frequency" bind:value={frequency} min={10} max={20000} step={1} />
+			<p>{frequency} Hz</p>
+		{/if}
+		{#if sampleType === SampleType.CHIRP}
 			<label for="end_frequency">End Frequency:</label>
 			<Slider id="end_frequency" bind:value={end_frequency} min={10} max={20000} step={1} />
 			<p>{end_frequency} Hz</p>
@@ -124,7 +104,7 @@
 		<label for="duration">Duration:</label>
 		<Slider id="duration" bind:value={duration} min={0.1} max={10} step={0.1} />
 		<p>{duration.toPrecision(3)} s</p>
-		{#if selected === SampleType.NOISE}
+		{#if sampleType === SampleType.NOISE}
 			<label for="falloff">Falloff:</label>
 			<Slider id="falloff" bind:value={falloff} min={0} max={1} step={0.01} />
 			<p>{falloff.toPrecision(3)}</p>

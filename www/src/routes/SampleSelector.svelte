@@ -28,7 +28,7 @@
 	} = $props();
 
 	let frequency = $state(440);
-	let max_frequency = $state(4000);
+	let end_frequency = $state(4000);
 	let amplitude = $state(0.5);
 	let duration = $state(4);
 	let samplerate = $state(DEFAULT_AUDIO_SAMPLERATE);
@@ -50,7 +50,7 @@
 	const setSample = (
 		sample_type: SampleType,
 		frequency: number,
-		max_frequency: number,
+		end_frequency: number,
 		duration: number,
 		amplitude: number,
 		falloff: number
@@ -76,7 +76,7 @@
 			case SampleType.CHIRP:
 				sample = chirpSample(
 					frequency,
-					max_frequency,
+					end_frequency,
 					samplerate,
 					duration * samplerate,
 					amplitude
@@ -91,7 +91,7 @@
 	const throttledSetSample = throttle(setSample, 200);
 
 	$effect(() => {
-		throttledSetSample(selected, frequency, max_frequency, duration, amplitude, falloff);
+		throttledSetSample(selected, frequency, end_frequency, duration, amplitude, falloff);
 	});
 </script>
 
@@ -114,9 +114,9 @@
 		<Slider id="frequency" bind:value={frequency} min={10} max={20000} step={1} />
 		<p>{frequency} Hz</p>
 		{#if selected === SampleType.CHIRP}
-			<label for="max_frequency">Max Frequency:</label>
-			<Slider id="max_frequency" bind:value={max_frequency} min={10} max={20000} step={1} />
-			<p>{max_frequency} Hz</p>
+			<label for="end_frequency">End Frequency:</label>
+			<Slider id="end_frequency" bind:value={end_frequency} min={10} max={20000} step={1} />
+			<p>{end_frequency} Hz</p>
 		{/if}
 		<label for="amplitude">Amplitude:</label>
 		<Slider id="amplitude" bind:value={amplitude} min={0} max={1} step={0.01} />

@@ -13,7 +13,8 @@
 	let order = $state(4);
 	let type = $state(FilterType.Butterworth);
 
-	const createFilter = (cutoff: number, width: number, order: number) => {
+	const computeFilter = (type: FilterType, cutoff: number, width: number, order: number) => {
+		console.log(type, cutoff, width, order);
 		switch (type) {
 			case FilterType.Pass:
 				return single_pole_bandpass(cutoff / samplerate, width / samplerate);
@@ -29,26 +30,61 @@
 		}
 	};
 
-	$effect(() => {
-		const filter = createFilter(cutoff, width, order);
-		if (filter) {
-			onFilterChange?.(filter);
+	const createFilter = (type: FilterType, cutoff: number, width: number, order: number) => {
+		const filter = computeFilter(type, cutoff, width, order);
+		if (!filter) {
+			return;
 		}
-	});
+		onFilterChange?.(filter);
+	};
+
+	const initializeFilter = () => {
+		createFilter(type, cutoff, width, order);
+	};
+
+	initializeFilter();
 </script>
 
 <div>
 	<label for="cutoff">Cutoff</label>
-	<Slider bind:value={cutoff} min={200} max={samplerate / 2} step={1} id="cutoff" />
+	<Slider
+		bind:value={cutoff}
+		min={200}
+		max={samplerate / 2}
+		step={1}
+		id="cutoff"
+		oninput={() => createFilter(type, cutoff, width, order)}
+	/>
 	<p>{cutoff} Hz</p>
 	<label for="width">Width</label>
-	<Slider bind:value={width} min={1} max={samplerate / 2} step={1} id="width" />
+	<Slider
+		bind:value={width}
+		min={1}
+		max={samplerate / 2}
+		step={1}
+		id="width"
+		oninput={() => createFilter(type, cutoff, width, order)}
+	/>
 	<p>{width} Hz</p>
 	<label for="order">Order</label>
-	<Slider bind:value={order} min={1} max={10} step={1} id="order" />
+	<Slider
+		bind:value={order}
+		min={1}
+		max={10}
+		step={1}
+		id="order"
+		oninput={() => createFilter(type, cutoff, width, order)}
+	/>
 	<p>{order}</p>
 	<label for="type">Type</label>
-	<select bind:value={type} id="type">
+	<select
+		bind:value={type}
+		id="type"
+		oninput={(e) => {
+			let val = (e.target as HTMLSelectElement).value;
+			createFilter(val as FilterType, cutoff, width, order);
+		}}
+	>
 		<option value={FilterType.Pass}>Simple Pass</option>
 		<option value={FilterType.Stop}>Simple Stop</option>
 		<option value={FilterType.Butterworth}>Butterworth</option>

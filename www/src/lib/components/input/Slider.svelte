@@ -1,21 +1,45 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
+	interface SliderAttributes extends Omit<HTMLInputAttributes, 'value' | 'oninput' | 'onchange'> {
+		value: number;
+		min?: number;
+		max?: number;
+		step?: number;
+		oninput?: (value: number) => void;
+		onchange?: (value: number) => void;
+	}
+
 	let {
 		value = $bindable(0),
 		min = 0,
 		max = 1,
 		step = 0.01,
+		oninput,
+		onchange,
 		...rest
-	}: {
-		value: number;
-		min?: number;
-		max?: number;
-		step?: number;
-	} & HTMLInputAttributes = $props();
+	}: SliderAttributes = $props();
+
+	const handleUpdate = (handler?: (value: number) => void) => (e: Event) => {
+		let val = (e.target as HTMLInputElement).valueAsNumber;
+		if (isNaN(val)) {
+			return;
+		}
+		handler?.(val);
+	};
 </script>
 
-<input type="range" class="slider" {...rest} bind:value {min} {max} {step} />
+<input
+	type="range"
+	class="slider"
+	{...rest}
+	bind:value
+	{min}
+	{max}
+	{step}
+	onchange={handleUpdate(onchange)}
+	oninput={handleUpdate(oninput)}
+/>
 
 <style lang="less">
 	.slider {

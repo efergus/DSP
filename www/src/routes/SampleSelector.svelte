@@ -9,11 +9,11 @@
 	import Chirp from '$lib/icons/Chirp.svelte';
 	import {
 		chirpSample,
+		pinkNoiseSample,
 		sawSample,
 		sinSample,
 		squareSample,
-		triangleSample,
-		whiteNoiseSample
+		triangleSample
 	} from '$lib/dsp/samples';
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData } from '$lib/audio/sample';
 	import Slider from '$lib/components/input/Slider.svelte';
@@ -32,6 +32,7 @@
 	let amplitude = $state(0.5);
 	let duration = $state(4);
 	let samplerate = $state(DEFAULT_AUDIO_SAMPLERATE);
+	let falloff = $state(0.0);
 
 	const sample_types = [
 		{ type: SampleType.SINE, name: 'Sine Wave', icon: SinWave },
@@ -51,7 +52,8 @@
 		frequency: number,
 		max_frequency: number,
 		duration: number,
-		amplitude: number
+		amplitude: number,
+		falloff: number
 	) => {
 		selected = sample_type;
 		let sample: SampleData | undefined;
@@ -69,7 +71,7 @@
 				sample = triangleSample(frequency, samplerate, duration * samplerate, amplitude);
 				break;
 			case SampleType.NOISE:
-				sample = whiteNoiseSample(duration * samplerate, amplitude);
+				sample = pinkNoiseSample(duration * samplerate, falloff, amplitude);
 				break;
 			case SampleType.CHIRP:
 				sample = chirpSample(
@@ -89,7 +91,7 @@
 	const throttledSetSample = throttle(setSample, 200);
 
 	$effect(() => {
-		throttledSetSample(selected, frequency, max_frequency, duration, amplitude);
+		throttledSetSample(selected, frequency, max_frequency, duration, amplitude, falloff);
 	});
 </script>
 
@@ -118,10 +120,15 @@
 		{/if}
 		<label for="amplitude">Amplitude:</label>
 		<Slider id="amplitude" bind:value={amplitude} min={0} max={1} step={0.01} />
-		<p>{amplitude * 100} %</p>
+		<p>{(amplitude * 100).toPrecision(3)} %</p>
 		<label for="duration">Duration:</label>
 		<Slider id="duration" bind:value={duration} min={0.1} max={10} step={0.1} />
-		<p>{duration} s</p>
+		<p>{duration.toPrecision(3)} s</p>
+		{#if selected === SampleType.NOISE}
+			<label for="falloff">Falloff:</label>
+			<Slider id="falloff" bind:value={falloff} min={0} max={1} step={0.01} />
+			<p>{falloff.toPrecision(3)}</p>
+		{/if}
 	</div>
 </div>
 
@@ -132,7 +139,7 @@
 
 	div.stack {
 		display: grid;
-		grid-template-columns: 14ch 1fr 6ch;
+		grid-template-columns: 14ch 1fr 8ch;
 		align-items: center;
 		gap: 6px;
 	}

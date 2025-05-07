@@ -50,7 +50,7 @@ export function pinkNoise(samples = 128, degree = 0.5, amplitude = 1) {
 
     for (let idx = 2; idx < samples; idx += 2) {
         const frequency = idx / samples;
-        const gain = amplitude / Math.pow(frequency, degree);
+        const gain = 1 / Math.pow(frequency, degree);
         spectrum[idx] *= gain;
         spectrum[idx + 1] *= gain;
     }
@@ -62,7 +62,7 @@ export function pinkNoise(samples = 128, degree = 0.5, amplitude = 1) {
         attenuation = Math.max(attenuation, Math.abs(res[idx]));
     }
     for (let idx = 0; idx < samples; idx++) {
-        res[idx] /= attenuation;
+        res[idx] *= amplitude / attenuation;
     }
 
     return res;

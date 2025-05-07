@@ -168,6 +168,7 @@
 				onData={(sample) => {
 					data = sample;
 					playUpdateSpan(data);
+					playing = false;
 					// console.log(data);
 				}}
 			/>

@@ -14,7 +14,6 @@ class AudioController extends AudioWorkletProcessor {
             const args = e.data as AudioControllerCommandArgs;
             if (args.sample !== undefined) {
                 this.sample = args.sample;
-                this.frame = 0;
             }
             if (args.play !== undefined) {
                 this.playing = args.play;
@@ -26,7 +25,7 @@ class AudioController extends AudioWorkletProcessor {
 
         this.sample = null;
         this.frame = 0;
-        this.playing = true;
+        this.playing = false;
     }
     process(_inputs: Float32Array[][], outputs: Float32Array[][], parameters: Record<string, Float32Array>) {
         if (!this.playing || !this.sample) {

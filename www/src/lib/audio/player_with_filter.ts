@@ -86,12 +86,12 @@ export class PlayerWithFilter {
         }, [coeffecients.buffer]);
     }
 
-    async setSample(sample: SampleData) {
+    async setSample(sample: SampleData, play: boolean = false) {
         this.sample = sample;
         if (this.audio) {
             const { controllerNode } = this.audio;
             const buffer = sample.toFloat32Array();
-            controllerNode.port.postMessage({ sample: buffer }, [buffer.buffer])
+            controllerNode.port.postMessage({ sample: buffer, seek: 0, play }, [buffer.buffer])
         }
     }
 

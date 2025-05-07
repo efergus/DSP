@@ -21,6 +21,7 @@ type RecorderAudioState = {
     source: MediaStreamAudioSourceNode;
     node: AudioWorkletNode;
     gain: GainNode;
+    destination: MediaStreamAudioDestinationNode;
 };
 
 export class Recorder {
@@ -61,6 +62,7 @@ export class Recorder {
         });
         const context = new AudioContext();
         const source = context.createMediaStreamSource(stream);
+        const destination = context.createMediaStreamDestination();
 
         await context.audioWorklet.addModule(audioTapInfo.url);
         const node = new AudioWorkletNode(context, audioTapInfo.name, {
@@ -71,7 +73,7 @@ export class Recorder {
         const gain = new GainNode(context, { gain: 0.0 });
         source.connect(node);
         node.connect(gain);
-        gain.connect(context.destination);
+        gain.connect(destination);
 
         node.port.onmessage = (event) => {
             if (!this.audio) {
@@ -91,7 +93,8 @@ export class Recorder {
             stream,
             source,
             node,
-            gain
+            gain,
+            destination
         };
 
         this.audio.gain.gain.linearRampToValueAtTime(1.0, this.audio.context.currentTime + 0.1);

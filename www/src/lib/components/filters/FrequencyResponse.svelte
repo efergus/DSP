@@ -41,26 +41,8 @@
 </script>
 
 <div>
-	<Waveform data={response} span={frequencySpan} samplerate={samples} height={120} />
-	<Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} height={120} />
-	<!-- <button
-		onclick={() => {
-			impulse.fill(0);
-			impulse[0] = 1.0;
-			// console.log(impulse);
-			applyFilter(filter, impulse);
-		}}>Impulse</button
-	>
-	<button
-		onclick={() => {
-			impulse.fill(0);
-			for (let idx = 20; idx < samples; idx++) {
-				impulse[idx] = 1.0;
-			}
-			applyFilter(filter, impulse);
-		}}>Step</button
-    > -->
-	<!-- <canvas bind:this={canvas}></canvas> -->
+	<Waveform data={response} span={frequencySpan} samplerate={samples} height={250} />
+	<!-- <Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} height={120} /> -->
 </div>
 
 <style lang="less">

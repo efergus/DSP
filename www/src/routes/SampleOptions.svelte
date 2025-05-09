@@ -98,17 +98,17 @@
 			<Slider id="end_frequency" bind:value={end_frequency} min={10} max={20000} step={1} />
 			<p>{end_frequency} Hz</p>
 		{/if}
+		{#if sampleType === SampleType.NOISE}
+			<label for="falloff">Falloff:</label>
+			<Slider id="falloff" bind:value={falloff} min={0} max={1} step={0.01} />
+			<p>{falloff.toPrecision(3)}</p>
+		{/if}
 		<label for="amplitude">Amplitude:</label>
 		<Slider id="amplitude" bind:value={amplitude} min={0} max={1} step={0.01} />
 		<p>{(amplitude * 100).toPrecision(3)} %</p>
 		<label for="duration">Duration:</label>
 		<Slider id="duration" bind:value={duration} min={0.1} max={10} step={0.1} />
 		<p>{duration.toPrecision(3)} s</p>
-		{#if sampleType === SampleType.NOISE}
-			<label for="falloff">Falloff:</label>
-			<Slider id="falloff" bind:value={falloff} min={0} max={1} step={0.01} />
-			<p>{falloff.toPrecision(3)}</p>
-		{/if}
 	</div>
 </div>
 
@@ -120,6 +120,7 @@
 	div.stack {
 		display: grid;
 		grid-template-columns: 14ch 1fr 8ch;
+		grid-auto-rows: minmax(2em, auto);
 		align-items: center;
 		gap: 6px;
 	}

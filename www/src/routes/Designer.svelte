@@ -25,6 +25,7 @@
 	import SampleSelector from './SampleOptions.svelte';
 	import SampleTypeOptions from './SampleTypeOptions.svelte';
 	import { SampleType } from '$lib/state/sample_selector';
+	import ButtonGroup from '$lib/components/input/ButtonGroup.svelte';
 
 	const initialDuration = 2;
 	const initialSample = squareSample(
@@ -137,7 +138,7 @@
 	</IirFilterEditor>
 
 	<div>
-		<div class="buttons">
+		<ButtonGroup>
 			<AudioPlayButton
 				{data}
 				{filter}
@@ -168,13 +169,15 @@
 				onData={(sample) => {
 					data = sample;
 					playUpdateSpan(data);
-					playing = false;
+					// playing = false;
 					// console.log(data);
 				}}
 			/>
 
+			<div />
+
 			<SampleTypeOptions bind:value={sampleType} />
-		</div>
+		</ButtonGroup>
 
 		<SampleSelector
 			{sampleType}
@@ -189,9 +192,11 @@
 			onFilterChange={(value) => {
 				standardFilter = value;
 				const digital = value.to_digital_bilinear();
-				const response = digital.frequency_response_norm(0);
-				if (response > 1) {
-					digital.gain /= response;
+				const dc_response = digital.frequency_response_norm(0);
+				const nyquist_response = digital.frequency_response_norm(0.5);
+				const greatest_response = Math.max(dc_response, nyquist_response);
+				if (greatest_response > 1) {
+					digital.gain /= greatest_response;
 				}
 				filter = digital;
 			}}
@@ -209,18 +214,5 @@
 		grid-template-columns: 1fr 1fr;
 		gap: 6px;
 		padding: 6px;
-	}
-
-	.buttons {
-		display: flex;
-		justify-content: stretch;
-		border: 1px solid black;
-
-		> :global(*) {
-			border: none;
-		}
-		> :global(:not(:last-child)) {
-			border-right: 1px solid silver;
-		}
 	}
 </style>

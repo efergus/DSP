@@ -1,17 +1,6 @@
 <script lang="ts">
 	import Button from '$lib/components/input/Button.svelte';
 	import { SAMPLE_TYPES, SampleType } from '$lib/state/sample_selector';
-	import {
-		chirpSample,
-		pinkNoiseSample,
-		sawSample,
-		sinSample,
-		squareSample,
-		triangleSample
-	} from '$lib/dsp/samples';
-	import { DEFAULT_AUDIO_SAMPLERATE, SampleData } from '$lib/audio/sample';
-	import Slider from '$lib/components/input/Slider.svelte';
-	import { throttle } from '$lib/input/debounce';
 
 	let {
 		value = $bindable(SampleType.SQUARE),

@@ -20,14 +20,15 @@
 		onFrame?: (frame: number, player: PlayerWithFilter) => void;
 	} = $props();
 	let frameState = $state(0);
-	let filterChanged = $state(0);
+	let latestChange = $state(0);
 	let player: PlayerWithFilter = $state(
 		new PlayerWithFilter(filter, {
 			callback: ({ remaining }) => {
 				if (!remaining) {
 					const now = Date.now();
-					if (now - filterChanged < 3000) {
-						setTimeout(() => player.play(data), 250);
+					const duration = data.duration();
+					if (now - latestChange < Math.min(3000, duration * 1000)) {
+						setTimeout(play, 250);
 					} else {
 						playing = false;
 						frameState = 0;
@@ -43,16 +44,21 @@
 		})
 	);
 
+	const play = () => {
+		player.play(data);
+	};
+
 	$effect(() => {
 		if (filter) {
 			player.setFilter(filter);
-			filterChanged = Date.now();
+			latestChange = Date.now();
 		}
 	});
 
 	$effect(() => {
 		if (data) {
-			player.setSample(data);
+			player.setSample(data, playing);
+			latestChange = Date.now();
 		}
 	});
 

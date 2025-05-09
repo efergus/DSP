@@ -404,6 +404,18 @@ export function butterworth(freq: number, order = 2) {
     return new IirContinuous([], poles, gain);
 }
 
+export function butterworth_high_pass(freq: number, order = 2) {
+    const gain = 1;
+    let zeros = [];
+    let poles = [];
+    for (let k = 1; k <= order; k++) {
+        const pole = complex_polar((2 * k + order - 1) * Math.PI / (2 * order), 1);
+        poles.push(complex_div(complex(freq, 0), pole));
+        zeros.push(complex(0, 0));
+    }
+    return new IirContinuous(zeros, poles, gain);
+}
+
 export function single_pole_bandpass(freq: number, width: number) {
     return new IirContinuous([], addConjugates([complex(- width, freq * 2 * Math.PI)]))
 }

@@ -44,11 +44,12 @@
 
 	let styleSize = $state(point(width, height));
 	let canvasSize = $state(point(width, height));
+	let axisSize = $state(point(axisSizeX, axisSizeY));
 
 	const samplerate = $derived(data.samplerate);
 	const stride = $derived(sampleSize - overlap);
 	const frequencySpan = $derived(span1d(span.y.start * samplerate, span.y.end * samplerate));
-	const screenSpan = $derived(span2d(axisSizeY, canvasSize.x, canvasSize.y - axisSizeX, 0));
+	const screenSpan = $derived(span2d(axisSize.y, canvasSize.x, canvasSize.y - axisSize.x, 0));
 	const interiorScreenSpan = $derived(span2d(0, screenSpan.x.size(), 0, screenSpan.y.size()));
 	let canvas: HTMLCanvasElement;
 	let currentSample: SampleData = $state(data);
@@ -69,12 +70,12 @@
 	);
 
 	const isInVerticalAxis = $derived(
-		(pos: Point) => pos.x <= axisSizeY && pos.y < height - axisSizeX
+		(pos: Point) => pos.x <= axisSize.y && pos.y < height - axisSize.x
 	);
 	const isInHorizontalAxis = $derived(
-		(pos: Point) => pos.x > axisSizeY && pos.y >= height - axisSizeX
+		(pos: Point) => pos.x > axisSize.y && pos.y >= height - axisSize.x
 	);
-	const isInBody = $derived((pos: Point) => pos.x > axisSizeY && pos.y < height - axisSizeX);
+	const isInBody = $derived((pos: Point) => pos.x > axisSize.y && pos.y < height - axisSize.x);
 
 	const updateSpectrogramData = () => {
 		// update spectrogram data with any new data in the sample
@@ -169,7 +170,7 @@
 		}
 
 		await Promise.all(promises);
-		context.putImageData(image, axisSizeY, 0);
+		context.putImageData(image, axisSize.y, 0);
 		updateVersion = data.updateVersion;
 		drawn = span;
 		if (worstChunk > 1000 / 30) {
@@ -185,12 +186,12 @@
 			return;
 		}
 		if (span !== drawn || updateVersion !== data.updateVersion) {
-			context.clearRect(0, 0, axisSizeY, height - axisSizeX);
-			context.clearRect(0, height - axisSizeX, width, axisSizeX);
+			context.clearRect(0, 0, axisSize.y, canvasSize.y - axisSize.x);
+			context.clearRect(0, canvasSize.y - axisSize.x, canvasSize.x, axisSize.x);
 			drawAxes(context, {
 				span: span2dFromSpans(span.x, frequencySpan),
-				sizeX: axisSizeX,
-				sizeY: axisSizeY,
+				sizeX: axisSize.x,
+				sizeY: axisSize.y,
 				maxInteriorDepth: -1
 			});
 			updateSpectrogramData();
@@ -215,8 +216,8 @@
 
 	onMount(() => {
 		const pixelRatio = window.devicePixelRatio;
-		console.log(pixelRatio);
 		canvasSize = point(width * pixelRatio, height * pixelRatio);
+		axisSize = point(axisSizeX * pixelRatio, axisSizeY * pixelRatio);
 
 		const updateSpectrogramLoop = () => {
 			if (drawn && data.updateVersion !== updateVersion) {
@@ -289,7 +290,7 @@
 			<svg
 				width={axisSizeY}
 				height={height - axisSizeX}
-				viewBox={`0 0 ${axisSizeY} {height - axisSizeX}`}
+				viewBox={`0 0 ${axisSizeY} ${height - axisSizeX}`}
 				stroke-width={1}
 				stroke="currentColor"
 				fill="none"

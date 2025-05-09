@@ -12,14 +12,17 @@ class AudioController extends AudioWorkletProcessor {
 
         this.port.onmessage = (e) => {
             const args = e.data as AudioControllerCommandArgs;
-            if (args.sample !== undefined) {
-                this.sample = args.sample;
-            }
             if (args.play !== undefined) {
                 this.playing = args.play;
             }
             if (args.seek !== undefined) {
                 this.frame = args.seek;
+            }
+            if (args.sample !== undefined) {
+                this.sample = args.sample;
+                if (this.frame >= this.sample.length) {
+                    this.frame = 0;
+                }
             }
         }
 

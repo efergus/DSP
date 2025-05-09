@@ -87,11 +87,12 @@ export class PlayerWithFilter {
     }
 
     async setSample(sample: SampleData, play: boolean = false) {
+        const seek = sample.length >= this.sample.length ? {} : { seek: 0 };
         this.sample = sample;
         if (this.audio) {
             const { controllerNode } = this.audio;
             const buffer = sample.toFloat32Array();
-            controllerNode.port.postMessage({ sample: buffer, seek: 0, play }, [buffer.buffer])
+            controllerNode.port.postMessage({ sample: buffer, play, ...seek }, [buffer.buffer])
         }
     }
 
@@ -109,7 +110,7 @@ export class PlayerWithFilter {
         source.connect(controllerNode);
 
         gain.gain.linearRampToValueAtTime(1.0, context.currentTime + 0.1);
-        this.setSample(sample);
+        this.setSample(sample, true);
         controllerNode.port.onmessage = (msg: MessageEvent<AudioControllerMessage>) => {
             this.callback?.(msg.data);
         }

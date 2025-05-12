@@ -8,7 +8,7 @@ export const chirpSample = (base_freq = 20, peak_freq = 1000, samplerate = 44100
     let res = new Float32Array(length);
     const chirpRate = (peak_freq - base_freq) / length;
     for (let i = 0; i < length; i++) {
-        res[i] = Math.sin(2 * Math.PI * (base_freq + chirpRate * i) * i / samplerate) * amplitude;
+        res[i] = Math.sin(Math.PI * (base_freq + chirpRate * i) * i / samplerate) * amplitude;
     }
     return new SampleData(res, samplerate);
 };

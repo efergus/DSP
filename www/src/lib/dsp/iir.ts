@@ -395,6 +395,10 @@ export class IirContinuous extends Iir {
     }
 }
 
+export function prewarp(freq: number, T = 1) {
+    return 2 * Math.tan(freq * T / 2) / T;
+}
+
 export function butterworth(freq: number, order = 2) {
     const gain = freq ** order;
     let poles = [];
@@ -416,8 +420,28 @@ export function butterworth_high_pass(freq: number, order = 2) {
     return new IirContinuous(zeros, poles, gain);
 }
 
+export function butterworth_prewarped(freq: number, order = 2) {
+    return butterworth(prewarp(freq), order);
+}
+
+export function butterworth_high_pass_prewarped(freq: number, order = 2) {
+    return butterworth_high_pass(prewarp(freq), order);
+}
+
 export function single_pole_bandpass(freq: number, width: number) {
     return new IirContinuous([], addConjugates([complex(- width, freq * 2 * Math.PI)]))
+}
+
+export function single_pole_bandpass_prewarped(freq: number, width: number) {
+    return single_pole_bandpass(prewarp(freq), width);
+}
+
+export function single_pole_bandstop(freq: number, width: number) {
+    return new IirContinuous(addConjugates([complex(-width, freq)]), addConjugates([complex(-Infinity, Infinity)]))
+}
+
+export function single_pole_bandstop_prewarped(freq: number, width: number) {
+    return single_pole_bandstop(prewarp(freq * 2 * Math.PI), width);
 }
 
 export function single_pole_bandstop_digital(freq: number, width: number) {

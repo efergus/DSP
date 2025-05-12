@@ -3,9 +3,14 @@
 	import {
 		butterworth,
 		butterworth_high_pass,
+		butterworth_high_pass_prewarped,
+		butterworth_prewarped,
 		IirContinuous,
 		IirDigital,
-		single_pole_bandpass
+		single_pole_bandpass,
+		single_pole_bandpass_prewarped,
+		single_pole_bandstop,
+		single_pole_bandstop_prewarped
 	} from '$lib/dsp/iir';
 	import HighPass from '$lib/icons/HighPass.svelte';
 	import LowPass from '$lib/icons/LowPass.svelte';
@@ -14,6 +19,7 @@
 	import ButtonGroup from '../input/ButtonGroup.svelte';
 	import Slider from '../input/Slider.svelte';
 	import { FilterForm, FilterType } from './filter_creator';
+	import LabeledSlider from '../input/LabeledSlider.svelte';
 
 	const {
 		samplerate = $bindable(DEFAULT_AUDIO_SAMPLERATE),
@@ -39,14 +45,14 @@
 	) => {
 		switch (type) {
 			case FilterType.Pass:
-				return single_pole_bandpass(cutoff / samplerate, width / samplerate);
-			// case FilterType.Stop:
-			// 	return single_pole_bandstop(cutoff / samplerate, width / samplerate, order);
+				return single_pole_bandpass_prewarped(cutoff / samplerate, width / samplerate);
+			case FilterType.Stop:
+				return single_pole_bandstop_prewarped(cutoff / samplerate, width / samplerate);
 			case FilterType.Butterworth:
 				if (form == FilterForm.Lowpass) {
-					return butterworth((cutoff / samplerate) * 2 * Math.PI, order);
+					return butterworth_prewarped((cutoff / samplerate) * 2 * Math.PI, order);
 				}
-				return butterworth_high_pass((cutoff / samplerate) * 2 * Math.PI, order);
+				return butterworth_high_pass_prewarped((cutoff / samplerate) * 2 * Math.PI, order);
 			// case FilterType.Chebyshev:
 			// 	return chebyshev(cutoff, order);
 			default:
@@ -106,48 +112,47 @@
 			<option value={FilterType.Stop}>Simple Stop</option>
 			<option value={FilterType.Butterworth}>Butterworth</option>
 		</select>
-		<div />
-		<label for="cutoff">Cutoff</label>
-		<Slider
+		<div></div>
+		<div></div>
+		<LabeledSlider
+			label="Cutoff"
+			units="Hz"
 			bind:value={cutoff}
-			min={200}
+			min={10}
 			max={samplerate / 2}
-			step={1}
-			id="cutoff"
+			log
 			oninput={() => createFilter(form, type, cutoff, width, order)}
 		/>
-		<p>{cutoff} Hz</p>
-		<label for="width">Width</label>
-		<Slider
+		<LabeledSlider
+			label="Width"
+			units="Hz"
 			bind:value={width}
 			min={1}
 			max={samplerate / 2}
-			step={1}
-			id="width"
+			log
 			oninput={() => createFilter(form, type, cutoff, width, order)}
 		/>
-		<p>{width} Hz</p>
-		<label for="order">Order</label>
-		<Slider
+		<LabeledSlider
+			label="Order"
 			bind:value={order}
 			min={1}
 			max={10}
 			step={1}
-			id="order"
+			precision={1}
 			oninput={() => createFilter(form, type, cutoff, width, order)}
 		/>
-		<p>{order}</p>
 	</div>
 </div>
 
 <style lang="less">
 	.stack {
 		display: grid;
-		grid-template-columns: 8ch 1fr 8ch;
+		grid-template-columns: 6ch 1fr 10ch 2ch;
 		grid-auto-rows: minmax(2em, auto);
 		align-items: center;
 		gap: 6px;
 		width: 100%;
+		font-size: 14px;
 	}
 
 	p {

@@ -18,6 +18,7 @@
 	import { DEFAULT_AUDIO_SAMPLERATE, SampleData } from '$lib/audio/sample';
 	import Slider from '$lib/components/input/Slider.svelte';
 	import { throttle } from '$lib/input/debounce';
+	import LabeledSlider from '$lib/components/input/LabeledSlider.svelte';
 
 	let {
 		sampleType = SampleType.SINE,
@@ -29,7 +30,7 @@
 
 	let frequency = $state(440);
 	let end_frequency = $state(4000);
-	let amplitude = $state(0.5);
+	let amplitude = $state(50);
 	let duration = $state(4);
 	let samplerate = $state(DEFAULT_AUDIO_SAMPLERATE);
 	let falloff = $state(0.0);
@@ -81,7 +82,7 @@
 	const throttledSetSample = throttle(setSample, 200);
 
 	$effect(() => {
-		throttledSetSample(sampleType, frequency, end_frequency, duration, amplitude, falloff);
+		throttledSetSample(sampleType, frequency, end_frequency, duration, amplitude / 100, falloff);
 	});
 </script>
 
@@ -89,26 +90,37 @@
 	<h3>{sample_names.get(sampleType)}</h3>
 	<div class="stack">
 		{#if sampleType !== SampleType.NOISE}
-			<label for="frequency">Frequency:</label>
-			<Slider id="frequency" bind:value={frequency} min={10} max={20000} step={1} />
-			<p>{frequency} Hz</p>
+			<LabeledSlider
+				label="Frequency:"
+				units="Hz"
+				bind:value={frequency}
+				min={10}
+				max={20000}
+				log
+			/>
 		{/if}
 		{#if sampleType === SampleType.CHIRP}
-			<label for="end_frequency">End Frequency:</label>
-			<Slider id="end_frequency" bind:value={end_frequency} min={10} max={20000} step={1} />
-			<p>{end_frequency} Hz</p>
+			<LabeledSlider
+				label="Final Frequency:"
+				units="Hz"
+				bind:value={end_frequency}
+				min={10}
+				max={20000}
+				log
+			/>
 		{/if}
 		{#if sampleType === SampleType.NOISE}
-			<label for="falloff">Falloff:</label>
-			<Slider id="falloff" bind:value={falloff} min={0} max={1} step={0.01} />
-			<p>{falloff.toPrecision(3)}</p>
+			<LabeledSlider label="Falloff:" units="" bind:value={falloff} min={0} max={1} step={0.01} />
 		{/if}
-		<label for="amplitude">Amplitude:</label>
-		<Slider id="amplitude" bind:value={amplitude} min={0} max={1} step={0.01} />
-		<p>{(amplitude * 100).toPrecision(3)} %</p>
-		<label for="duration">Duration:</label>
-		<Slider id="duration" bind:value={duration} min={0.1} max={10} step={0.1} />
-		<p>{duration.toPrecision(3)} s</p>
+		<LabeledSlider label="Amplitude:" units="%" bind:value={amplitude} min={0} max={100} step={1} />
+		<LabeledSlider
+			label="Duration:"
+			units="s"
+			bind:value={duration}
+			min={0.1}
+			max={10}
+			step={0.1}
+		/>
 	</div>
 </div>
 
@@ -119,7 +131,7 @@
 
 	div.stack {
 		display: grid;
-		grid-template-columns: 14ch 1fr 8ch;
+		grid-template-columns: 10ch 1fr 8ch 2ch;
 		grid-auto-rows: minmax(2em, auto);
 		align-items: center;
 		gap: 6px;

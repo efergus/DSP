@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
 
-	interface SliderAttributes extends Omit<HTMLInputAttributes, 'value' | 'oninput' | 'onchange'> {
+	export interface SliderAttributes
+		extends Omit<HTMLInputAttributes, 'value' | 'oninput' | 'onchange'> {
 		value: number;
 		min?: number;
 		max?: number;
@@ -14,7 +15,7 @@
 		value = $bindable(0),
 		min = 0,
 		max = 1,
-		step = 0.01,
+		step,
 		oninput,
 		onchange,
 		...rest
@@ -36,7 +37,7 @@
 	bind:value
 	{min}
 	{max}
-	{step}
+	step={step ?? 'any'}
 	onchange={handleUpdate(onchange)}
 	oninput={handleUpdate(oninput)}
 />

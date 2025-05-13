@@ -13,20 +13,25 @@
 	import { onMount, type Snippet } from 'svelte';
 	import { PlayerWithFilter } from '$lib/audio/player_with_filter';
 	import { IirState } from '$lib/state/roots.svelte';
+	import RootEditor from '../../../routes/RootEditor.svelte';
+	import FilterCreator from './FilterCreator.svelte';
 
 	let {
 		data,
+		roots,
 		span = $bindable(),
 		frequencySpan = $bindable(),
-		sampleFilter,
+		sampleFilter = $bindable(),
 		onFilterChange,
 		onFilteredData,
 		children
 	}: {
 		data: SampleData;
+		roots: IirState;
 		span: Span2D;
 		frequencySpan: Span1D;
 		sampleFilter?: IirContinuous;
+
 		onFilterChange?: (filter: IirDigital) => void;
 		onFilteredData?: (sample: SampleData) => void;
 		children?: Snippet;
@@ -35,12 +40,14 @@
 	const whatever = 0.1;
 	const whatever2 = 0.1;
 	const initialFilter = single_pole_bandpass(whatever, whatever2);
-	let roots: IirState = new IirState(filterRoots(initialFilter));
 
 	let previousInput: Sample | null = $state(null);
 	let previousFilter: IirDigital | null = $state(null);
 	let previousSampleFilter: IirContinuous | null = $state(null);
 	let filteredData = $state(new SampleData());
+
+	let hover = $state<number | null>(null);
+	let active = $state<number | null>(null);
 
 	const computeDigitalFilter = (roots: IirState) => {
 		const baseFilter = IirDigital.from_roots(roots.zPlane, 1);
@@ -109,6 +116,8 @@
 				roots.setDigital(filter);
 				onFilterChange?.(filter);
 			}}
+			bind:hover
+			bind:active
 			span={span2d(-frequencySpan.size(), 0.1, frequencySpan.start, frequencySpan.end)}
 		/>
 		<PoleZeroEditor
@@ -120,6 +129,8 @@
 				onFilterChange?.(filter);
 			}}
 			zPlane={true}
+			bind:hover
+			bind:active
 			span={span2d(-1.2, 1.2, -1.2, 1.2)}
 		/>
 	</div>

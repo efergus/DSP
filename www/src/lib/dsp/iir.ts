@@ -1,19 +1,17 @@
 import { SampleView, type NumArr, type Sample } from "$lib/audio/sample";
 import { complex, complex_add, complex_conjugate, complex_dist, complex_div, complex_mul, complex_mul_scalar, complex_norm, complex_norm2, complex_phase, complex_phase_2, complex_polar, complex_pow, complex_sub, complex_to_real, type Complex } from "./complex";
 
-export const ZERO_STATE = -1;
-export const POLE_STATE = 1;
-
 export type Root = {
     degree: number;
     val: Complex;
 }
 
-export type OldRoot = {
-    state: number;
-    count: number;
-    val: Complex;
-};
+export function root(val: Complex, degree: number): Root {
+    return {
+        val,
+        degree
+    }
+}
 
 export function addConjugates(roots: Complex[]) {
     return roots.flatMap(x => Math.abs(x.im) > 1e-12 ? [x, complex_conjugate(x)] : [complex(x.re, 0)])
@@ -39,56 +37,78 @@ export function realFilterCoefficientsWithRoots(roots: Complex[]): number[] {
     return filterCoefficientsWithRoots(roots).map(complex_to_real);
 }
 
+function nonInfinityRoots(roots: Complex[]) {
+    return roots.filter(({ re, im }) => re !== Infinity && im !== Infinity);
+}
+
+export function expandedRoots(roots: Root[]): Complex[] {
+    return roots.flatMap(({ degree, val }) => new Array(Math.abs(degree)).fill(val));
+}
+
 export class Iir {
     declare _forward: Float32Array;
     declare _back: Float32Array;
     declare _state: number[];
-    declare _zeros: Complex[];
-    declare _poles: Complex[];
+    declare _roots: Root[];
     declare _gain: number;
     declare cutoff: number;
+    declare conjugate: boolean;
 
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
+    constructor(roots: Root[] = [], gain = 1, cutoff = 0, conjugate = true) {
         this._forward = new Float32Array([1]);
         this._back = new Float32Array([1]);
-        this._zeros = zeros;
-        this._poles = poles;
+        this._roots = this._addImplicitRoots(roots);
         this._gain = gain;
         this.cutoff = cutoff;
+        this.conjugate = conjugate;
 
         this._calculateCoefficients();
     }
 
-    set zeros(zeros: Complex[]) {
-        this._zeros = zeros;
+    set roots(roots: Root[]) {
+        this._roots = roots;
         this._calculateCoefficients();
     }
 
-    set poles(poles: Complex[]) {
-        this._poles = poles;
-        this._calculateCoefficients();
+    get roots(): Root[] {
+        return this._roots;
     }
 
-    get zeros(): Complex[] {
-        return this._zeros;
+    get zeros(): Root[] {
+        return this._roots.filter(({ degree }) => degree > 0);
     }
 
-    get poles(): Complex[] {
-        return this._poles;
+    get poles(): Root[] {
+        return this._roots.filter(({ degree }) => degree < 0);
+    }
+
+    _expandedRoots(roots: Root[]): Complex[] {
+        return this.conjugate ? addConjugates(expandedRoots(roots)) : expandedRoots(roots);
     }
 
     _calculateCoefficients() {
-        const N = this.order() + 1;
+        const poles = this._expandedRoots(this.poles);
+        const zeros = this._expandedRoots(this.zeros);
+        const N = Math.max(poles.length, zeros.length) + 1;
         this._forward = new Float32Array(N);
         this._back = new Float32Array(N);
-        const back = filterCoefficientsWithRoots(this.poles).map(complex_to_real);
-        const forward = filterCoefficientsWithRoots(this.zeros).map(complex_to_real);
+        const back = filterCoefficientsWithRoots(poles).map(complex_to_real);
+        const forward = filterCoefficientsWithRoots(zeros).map(complex_to_real);
         this._back.set(back.map((val) => val / back[0]));
         this._forward.set(forward.map((val) => val * this.gain / back[0]));
     }
 
+    _addImplicitRoots(roots: Root[]) {
+        const implicitRoots = -roots.reduce((acc, rt) => acc + rt.degree, 0);
+
+        if (implicitRoots !== 0) {
+            roots = roots.concat([root(complex(-Infinity, Infinity), implicitRoots)]);
+        }
+        return roots;
+    }
+
     order(): number {
-        return Math.max(this.zeros.length, this.poles.length);
+        return Math.max(this._expandedRoots(this.zeros).length, this._expandedRoots(this.poles).length);
     }
 
     get gain(): number {
@@ -139,17 +159,16 @@ export type ApplyIirOptions = {
 }
 
 export class IirDigital extends Iir {
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
-        super(zeros, poles, gain, cutoff);
+    constructor(roots: Root[] = [], gain = 1, cutoff = 0, conjugate = true) {
+        super(roots, gain, cutoff, conjugate);
     }
 
-    static from_roots(roots: Root[], gain = 1) {
-        const zeros = roots.filter(({ degree }) => degree > 0);
-        const poles = roots.filter(({ degree }) => degree < 0);
+    static from_roots(roots: Root[], gain = 1, conjugate = true) {
         return new IirDigital(
-            addConjugates(zeros.flatMap(({ degree, val }) => new Array(degree).fill(val))),
-            addConjugates(poles.flatMap(({ degree, val }) => new Array(-degree).fill(val))),
-            gain
+            roots,
+            gain,
+            0,
+            conjugate
         );
     }
 
@@ -202,18 +221,13 @@ export class IirDigital extends Iir {
     }
 
     frequency_response_norm_2(freq: number): number {
-        let numerator = 1;
+        let res = 1;
         let point = complex_polar(freq * Math.PI);
-        for (let i = 0; i < this.zeros.length; i++) {
-            numerator *= complex_dist(this.zeros[i], point);
+        for (let i = 0; i < this.roots.length; i++) {
+            res *= complex_dist(this.roots[i].val, point) ** this.roots[i].degree;
         }
 
-        let denominator = 1;
-        for (let i = 0; i < this.poles.length; i++) {
-            denominator *= complex_dist(this.poles[i], point);
-        }
-
-        return numerator / denominator * this.gain;
+        return res * this.gain;
     }
 
     frequency_response_norm_derivative_approx(freq: number, h = 1e-4): number {
@@ -288,21 +302,11 @@ export class IirDigital extends Iir {
                 max_freq = freq;
             }
         }
-        for (let idx = 0; idx < this.zeros.length; idx++) {
-            if (this.zeros[idx].im <= 0) {
+        for (let idx = 0; idx < this.roots.length; idx++) {
+            if (this.roots[idx].val.im <= 0) {
                 continue;
             }
-            const freq = complex_phase(this.zeros[idx]) / Math.PI / 2;
-            if (this.frequency_response_norm(freq) > max_response) {
-                max_response = this.frequency_response_norm(freq);
-                max_freq = freq;
-            }
-        }
-        for (let idx = 0; idx < this.poles.length; idx++) {
-            if (this.poles[idx].im <= 0) {
-                continue;
-            }
-            const freq = complex_phase(this.poles[idx]) / Math.PI / 2;
+            const freq = complex_phase(this.roots[idx].val) / Math.PI / 2;
             if (this.frequency_response_norm(freq) > max_response) {
                 max_response = this.frequency_response_norm(freq);
                 max_freq = freq;
@@ -334,12 +338,8 @@ export class IirDigital extends Iir {
             const startAngle = complex_phase(toOne);
             return angle + startAngle;
         }
-        for (let i = 0; i < this.zeros.length; i++) {
-            acc += angle(this.zeros[i]);
-        }
-
-        for (let i = 0; i < this.poles.length; i++) {
-            acc -= angle(this.poles[i]);
+        for (let i = 0; i < this.roots.length; i++) {
+            acc += angle(this.roots[i].val) * this.roots[i].degree;
         }
 
         return acc;
@@ -361,63 +361,55 @@ export class IirDigital extends Iir {
 }
 
 export class IirContinuous extends Iir {
-    constructor(zeros: Complex[] = [], poles: Complex[] = [], gain = 1, cutoff = 0) {
-        super(zeros, poles, gain, cutoff);
+    constructor(roots: Root[] = [], gain = 1, cutoff = 0, conjugate = true) {
+        super(roots, gain, cutoff, conjugate);
     }
 
     to_digital_bilinear(freq: number = 0): IirDigital {
-        const bilinear = (root: Complex) => s2z_bilinear(root, 1, freq)
-        const N = Math.max(this.zeros.length, this.poles.length);
-        const transformed_zeros = this.zeros.map(bilinear);
-        const transformed_poles = this.poles.map(bilinear);
+        const bilinear = (rt: Root) => root(s2z_bilinear(rt.val, 1, freq), rt.degree);
+        const roots = this.roots.map(bilinear);
 
-        let zeros = transformed_zeros.concat(new Array(N - this.zeros.length).fill(complex(-1)));
-        let poles = transformed_poles.concat(new Array(N - this.poles.length).fill(complex(-1)));
+        // const implicitRoots = -roots.reduce((acc, rt) => acc + rt.degree, 0);
 
-        const filter = new IirDigital(zeros, poles, this.gain);
+        // if (implicitRoots !== 0) {
+        //     roots.push(root(complex(-Infinity, Infinity), implicitRoots));
+        // }
+
+        const filter = new IirDigital(roots, this.gain);
 
         return filter;
     }
 
     frequency_response_norm(freq: number): number {
-        let numerator = 1;
-        let point = complex(0, freq);
-        for (let i = 0; i < this.zeros.length; i++) {
-            numerator *= complex_dist(this.zeros[i], point);
-        }
-
-        let denominator = 1;
-        for (let i = 0; i < this.poles.length; i++) {
-            denominator *= complex_dist(this.poles[i], point);
-        }
-
-        return numerator / denominator * this.gain;
+        return complex_norm(this.response(complex(0, freq)));
     }
 }
 
 export function prewarp(freq: number, T = 1) {
+    if (T == 0) {
+        return freq;
+    }
     return 2 * Math.tan(freq * T / 2) / T;
 }
 
 export function butterworth(freq: number, order = 2) {
     const gain = freq ** order;
-    let poles = [];
+    let roots = [];
     for (let k = 1; k <= order; k++) {
-        poles.push(complex_polar((2 * k + order - 1) * Math.PI / (2 * order), freq));
+        roots.push(root(complex_polar((2 * k + order - 1) * Math.PI / (2 * order), freq), -1));
     }
-    return new IirContinuous([], poles, gain);
+    return new IirContinuous(roots, gain);
 }
 
 export function butterworth_high_pass(freq: number, order = 2) {
     const gain = 1;
-    let zeros = [];
-    let poles = [];
+    let roots = [];
     for (let k = 1; k <= order; k++) {
         const pole = complex_polar((2 * k + order - 1) * Math.PI / (2 * order), 1);
-        poles.push(complex_div(complex(freq, 0), pole));
-        zeros.push(complex(0, 0));
+        roots.push(root(complex_div(complex(freq, 0), pole), -1));
     }
-    return new IirContinuous(zeros, poles, gain);
+    roots.push(root(complex(0, 0), order));
+    return new IirContinuous(roots, gain);
 }
 
 export function butterworth_prewarped(freq: number, order = 2) {
@@ -428,43 +420,26 @@ export function butterworth_high_pass_prewarped(freq: number, order = 2) {
     return butterworth_high_pass(prewarp(freq), order);
 }
 
-export function single_pole_bandpass(freq: number, width: number) {
-    return new IirContinuous([], addConjugates([complex(- width, freq * 2 * Math.PI)]))
+export function single_pole_bandpass(freq: number, width: number, order = 1) {
+    const poles = new Array(order).fill(root(complex(- width, freq * 2 * Math.PI), -1));
+    return new IirContinuous(poles)
 }
 
-export function single_pole_bandpass_prewarped(freq: number, width: number) {
-    return single_pole_bandpass(prewarp(freq), width);
+export function single_pole_bandpass_prewarped(freq: number, width: number, order = 1) {
+    return single_pole_bandpass(prewarp(freq), width, order);
 }
 
-export function single_pole_bandstop(freq: number, width: number) {
-    return new IirContinuous(addConjugates([complex(-width, freq)]), addConjugates([complex(-Infinity, Infinity)]))
+export function single_pole_bandstop(freq: number, width: number, order = 1) {
+    const poles = new Array(order).fill(root(complex(-width, freq * 2 * Math.PI), order));
+    return new IirContinuous(poles.concat([root(complex(-Infinity, -Infinity), -order)]), 1)
 }
 
-export function single_pole_bandstop_prewarped(freq: number, width: number) {
-    return single_pole_bandstop(prewarp(freq * 2 * Math.PI), width);
-}
-
-export function single_pole_bandstop_digital(freq: number, width: number) {
-    return new IirDigital(addConjugates([complex_polar(freq, 1)]), addConjugates([complex_polar(freq, 1 - width)]))
-}
-
-export function single_pole_bandpass_digital(freq: number, width: number) {
-    return new IirDigital(addConjugates([complex_polar(freq, 1 - width)]), addConjugates([complex_polar(freq, 1)]))
+export function single_pole_bandstop_prewarped(freq: number, width: number, order = 1) {
+    return single_pole_bandstop(prewarp(freq), width, order);
 }
 
 export function filterRoots(filter: Iir): Root[] {
-    return filter.zeros
-        .map((val) => ({
-            degree: 1,
-            val
-        }))
-        .concat(
-            filter.poles.map((val) => ({
-                degree: -1,
-                val
-            }))
-        )
-        .filter((root) => root.val.im >= 0);
+    return filter.roots;
 }
 
 

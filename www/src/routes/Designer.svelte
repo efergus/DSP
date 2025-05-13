@@ -9,7 +9,7 @@
 	import FilterDetails from '$lib/components/filters/FilterDetails.svelte';
 	import IirFilterEditor from '$lib/components/filters/IirFilterEditor.svelte';
 	import Button from '$lib/components/input/Button.svelte';
-	import type { IirContinuous, IirDigital } from '$lib/dsp/iir';
+	import { filterRoots, root, type IirContinuous, type IirDigital } from '$lib/dsp/iir';
 	import {
 		chirpSample,
 		phaseNoiseSample,
@@ -26,6 +26,9 @@
 	import SampleTypeOptions from './SampleTypeOptions.svelte';
 	import { SampleType } from '$lib/state/sample_selector';
 	import ButtonGroup from '$lib/components/input/ButtonGroup.svelte';
+	import { IirState } from '$lib/state/roots.svelte';
+	import { complex } from '$lib/dsp/complex';
+	import RootEditor from './RootEditor.svelte';
 
 	const initialDuration = 2;
 	const initialSample = squareSample(
@@ -42,6 +45,9 @@
 	let filter: IirDigital | undefined = $state(undefined);
 	let standardFilter: IirContinuous | undefined = $state(undefined);
 	let sampleType: SampleType = $state(SampleType.SQUARE);
+	let roots: IirState = new IirState([root(complex(0, 0), 1)]);
+	let active = $state<number | null>(null);
+	let hover = $state<number | null>(null);
 
 	const window = 256 / DEFAULT_AUDIO_SAMPLERATE;
 	let span = $state(span2d(0, window, -1, 1));
@@ -126,6 +132,7 @@
 	/>
 	<IirFilterEditor
 		{data}
+		{roots}
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
 		sampleFilter={standardFilter}
@@ -133,7 +140,7 @@
 		onFilteredData={(sample) => (filteredData = sample)}
 	>
 		{#if filter}
-			<FilterDetails {filter} />
+			<FilterDetails {filter} samplerate={data.samplerate} />
 		{/if}
 	</IirFilterEditor>
 
@@ -186,6 +193,7 @@
 			}}
 		/>
 	</div>
+
 	<div>
 		<FilterCreator
 			samplerate={data.samplerate}
@@ -201,6 +209,35 @@
 				filter = digital;
 			}}
 		/>
+	</div>
+	<div></div>
+	<div>
+		{#each roots.zPlane as root, index}
+			<RootEditor
+				bind:value={() => root,
+				(value) => {
+					const newRoots = [...roots.zPlane];
+					newRoots[index] = value;
+					roots.setZPlane(newRoots);
+					// const filter = computeDigitalFilter(roots);
+					// onFilterChange?.(filter);
+				}}
+				hovered={hover === index}
+				polar
+				onenter={() => {
+					hover = index;
+				}}
+				onleave={() => {
+					hover = null;
+				}}
+				onfocus={() => {
+					active = index;
+				}}
+				onblur={() => {
+					active = null;
+				}}
+			/>
+		{/each}
 	</div>
 </div>
 

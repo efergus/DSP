@@ -32,7 +32,7 @@ export class PlayerWithFilter {
         this.sample = new SampleData();
         this.callback = options?.callback ?? null;
         this.debug = options?.debug ?? false;
-        if (filter) {
+        if (typeof AudioContext !== "undefined" && filter) {
             this.setFilter(filter);
         }
     }

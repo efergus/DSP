@@ -8,6 +8,8 @@
 	let {
 		roots = $bindable([]),
 		span = $bindable(),
+		hover = $bindable(null),
+		active = $bindable(null),
 		width = 250,
 		height = 250,
 		padding = 0.2,
@@ -19,10 +21,9 @@
 		height?: number;
 		padding?: number;
 		zPlane?: boolean;
+		hover?: number | null;
+		active?: number | null;
 	} = $props();
-
-	let hover: number | null = $state(null);
-	let active: number | null = $state(null);
 </script>
 
 <div>

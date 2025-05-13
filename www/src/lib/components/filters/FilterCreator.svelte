@@ -45,9 +45,9 @@
 	) => {
 		switch (type) {
 			case FilterType.Pass:
-				return single_pole_bandpass_prewarped(cutoff / samplerate, width / samplerate);
+				return single_pole_bandpass_prewarped(cutoff / samplerate, width / samplerate, order);
 			case FilterType.Stop:
-				return single_pole_bandstop_prewarped(cutoff / samplerate, width / samplerate);
+				return single_pole_bandstop_prewarped(cutoff / samplerate, width / samplerate, order);
 			case FilterType.Butterworth:
 				if (form == FilterForm.Lowpass) {
 					return butterworth_prewarped((cutoff / samplerate) * 2 * Math.PI, order);
@@ -99,7 +99,7 @@
 <div class="box">
 	<h3>{form}</h3>
 	<div class="stack">
-		<label for="type">Type</label>
+		<label for="type">Type:</label>
 		<select
 			bind:value={type}
 			id="type"
@@ -115,7 +115,7 @@
 		<div></div>
 		<div></div>
 		<LabeledSlider
-			label="Cutoff"
+			label="Cutoff:"
 			units="Hz"
 			bind:value={cutoff}
 			min={10}
@@ -123,17 +123,18 @@
 			log
 			oninput={() => createFilter(form, type, cutoff, width, order)}
 		/>
+		{#if type !== FilterType.Butterworth}
+			<LabeledSlider
+				label="Width:"
+				bind:value={width}
+				min={1}
+				max={samplerate / 2}
+				log
+				oninput={() => createFilter(form, type, cutoff, width, order)}
+			/>
+		{/if}
 		<LabeledSlider
-			label="Width"
-			units="Hz"
-			bind:value={width}
-			min={1}
-			max={samplerate / 2}
-			log
-			oninput={() => createFilter(form, type, cutoff, width, order)}
-		/>
-		<LabeledSlider
-			label="Order"
+			label="Order:"
 			bind:value={order}
 			min={1}
 			max={10}
@@ -147,7 +148,7 @@
 <style lang="less">
 	.stack {
 		display: grid;
-		grid-template-columns: 6ch 1fr 10ch 2ch;
+		grid-template-columns: 10ch 1fr 10ch 2ch;
 		grid-auto-rows: minmax(2em, auto);
 		align-items: center;
 		gap: 6px;

@@ -13,8 +13,7 @@
 	import Circle from '$lib/icons/Circle.svelte';
 	import Trash from '$lib/icons/Trash.svelte';
 	import type { Root } from '$lib/dsp/iir';
-
-	let name = uniqueId('root-');
+	import LabeledSlider from '$lib/components/input/LabeledSlider.svelte';
 
 	let {
 		value = $bindable({
@@ -70,6 +69,9 @@
 		};
 	};
 	const updateInput = (value: Complex) => {
+		if (isNaN(value.re) || isNaN(value.im)) {
+			return;
+		}
 		if (complex_dist(value, complex(re, im)) < 1e-9) {
 			return;
 		}
@@ -100,133 +102,122 @@
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
-	class="outer"
+	class={['container', hovered && 'hovered']}
 	onmouseenter={() => onenter?.()}
 	onmouseleave={() => onleave?.()}
 	onfocusin={() => onfocus?.()}
 	onfocusout={() => onblur?.()}
 >
-	<div class="state between">
-		<div class={['state', hovered && 'gray']}>
-			{#each states as state}
-				<label class={[Math.sign(value.degree) === Math.sign(state.degree) && 'active']}>
-					<Circle fill={state.circleFill} stroke={state.circleStroke} size={18} />
-					<input
-						type="radio"
-						class="hidden"
-						{name}
-						onclick={() => {
-							value = {
-								...value,
-								degree: state.degree
-							};
-						}}
-					/>
-				</label>
-			{/each}
-			{states[value.degree > 0 ? 0 : 1]?.stateName}
-		</div>
-		<button onclick={() => ondelete?.()}>
-			<Trash />
-		</button>
+	<div class="header">
+		{#if value.degree >= 0}
+			Zero
+			<div class="icon">
+				<Circle size={12} />
+				{value.degree}
+			</div>
+		{:else}
+			Pole
+			<div class="icon">
+				<Circle size={12} stroke="red" fill="red" />
+				{-value.degree}
+			</div>
+		{/if}
 	</div>
-	{#if polar}
-		<NumberInput
-			value={radius}
-			oninput={({ value }) => {
-				updateValuePolar(value, angle);
-			}}
-		>
-			<i>r</i>:
-		</NumberInput>
-		<input
-			type="range"
-			min="0"
-			max="6"
-			step="0.1"
-			value={-Math.log10(1 - radius)}
-			oninput={(event) => {
-				const val = event.currentTarget.valueAsNumber;
-				updateValuePolar(1 - 10 ** -val, angle);
-				// r = 1 - 10 ** -val
-				// r - 1 = -10**-val
-				// 1 - r = 10 ** -val
-				// log10(1-r) = -val
+	<div class="grid">
+		{#if polar}
+			<LabeledSlider
+				label="radius:"
+				value={radius}
+				min={0}
+				max={1}
+				oninput={(value) => {
+					updateValuePolar(value, angle);
+				}}
+			/>
+			<LabeledSlider
+				label="angle:"
+				units="°"
+				value={angle}
+				min={0}
+				max={180}
+				oninput={(value) => {
+					updateValuePolar(radius, value);
+				}}
+			/>
+		{:else}
+			<NumberInput
+				value={re}
+				oninput={({ value }) => {
+					updateValueRect(value, im);
+				}}
+			>
+				re:
+			</NumberInput>
+			<NumberInput
+				value={im}
+				oninput={({ value }) => {
+					updateValueRect(re, value);
+				}}
+			>
+				im:
+			</NumberInput>
+		{/if}
+		<LabeledSlider
+			label="degree:"
+			value={value.degree}
+			min={-10}
+			max={10}
+			step={1}
+			precision={1}
+			oninput={(degree) => {
+				value = {
+					...value,
+					degree
+				};
 			}}
 		/>
-		<!-- <RangeInput></RangeInput> -->
-		<NumberInput
-			horizontal={true}
-			value={angle}
-			oninput={({ value }) => {
-				updateValuePolar(radius, value);
-			}}
-		>
-			<i>θ</i>:
-		</NumberInput>
-		<input
-			type="range"
-			min="0"
-			max="180"
-			step="1"
-			value={angle}
-			oninput={(event) => {
-				updateValuePolar(radius, event.currentTarget.valueAsNumber);
-			}}
-		/>
-	{:else}
-		<NumberInput
-			value={re}
-			oninput={({ value }) => {
-				updateValueRect(value, im);
-			}}
-		>
-			re:
-		</NumberInput>
-		<NumberInput
-			value={im}
-			oninput={({ value }) => {
-				updateValueRect(re, value);
-			}}
-		>
-			im:
-		</NumberInput>
-	{/if}
+	</div>
 </div>
 
 <style lang="less">
-	.gray {
-		background-color: gray;
-	}
-
-	label {
-		display: flex;
-		padding: 6px;
-		border-radius: 6px;
-		// height: fit-content;
-	}
-
-	label.active {
-		background-color: gray;
-	}
-
-	.state {
-		display: flex;
-		align-items: center;
-		flex-direction: row;
-		gap: 0.5em;
-	}
-
-	.state.between {
-		justify-content: space-between;
-	}
-
-	.outer {
+	.container {
 		display: flex;
 		flex-direction: column;
-		gap: 0.5em;
-		padding: 0.3em 0.5em 0.3em 0.5em;
-		border-radius: 0.2em;
-		background-color: white;
+		gap: 6px;
+		padding: 4px;
+		border: 1px solid transparent;
+	}
+
+	.container:not(:first-child) {
+		border-top: 0px solid transparent;
+	}
+	.container:not(:last-child) {
+		border-bottom: 1px solid black;
+	}
+
+	.grid {
+		display: grid;
+		grid-template-columns: 8ch 1fr 8ch 1ch;
+		gap: 6px;
+		align-items: center;
+	}
+
+	.hovered {
+		border: 1px solid black;
+	}
+
+	.header {
+		grid-column: span 4;
+		display: flex;
+		justify-content: space-between;
+		gap: 2px;
+		font-weight: bold;
+	}
+
+	.icon {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		font-size: 12px;
 	}
 </style>

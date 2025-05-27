@@ -179,8 +179,6 @@
 				onData={(sample) => {
 					data = sample;
 					playUpdateSpan(data);
-					// playing = false;
-					// console.log(data);
 				}}
 			/>
 
@@ -222,8 +220,6 @@
 					const newRoots = [...roots.zPlane];
 					newRoots[index] = value;
 					roots.setZPlane(newRoots);
-					// const filter = computeDigitalFilter(roots);
-					// onFilterChange?.(filter);
 				}}
 				hovered={hover === index}
 				polar

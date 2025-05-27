@@ -83,7 +83,8 @@ export class Iir {
     }
 
     _expandedRoots(roots: Root[]): Complex[] {
-        return this.conjugate ? addConjugates(expandedRoots(roots)) : expandedRoots(roots);
+        const expanded = expandedRoots(roots);
+        return this.conjugate ? addConjugates(expanded) : expanded;
     }
 
     _calculateCoefficients() {
@@ -102,7 +103,7 @@ export class Iir {
         const implicitRoots = -roots.reduce((acc, rt) => acc + rt.degree, 0);
 
         if (implicitRoots !== 0) {
-            roots = roots.concat([root(complex(-Infinity, Infinity), implicitRoots)]);
+            roots = roots.concat([root(complex(-1e12, 1e12), implicitRoots)]);
         }
         return roots;
     }
@@ -369,12 +370,6 @@ export class IirContinuous extends Iir {
         const bilinear = (rt: Root) => root(s2z_bilinear(rt.val, 1, freq), rt.degree);
         const roots = this.roots.map(bilinear);
 
-        // const implicitRoots = -roots.reduce((acc, rt) => acc + rt.degree, 0);
-
-        // if (implicitRoots !== 0) {
-        //     roots.push(root(complex(-Infinity, Infinity), implicitRoots));
-        // }
-
         const filter = new IirDigital(roots, this.gain);
 
         return filter;
@@ -431,7 +426,7 @@ export function single_pole_bandpass_prewarped(freq: number, width: number, orde
 
 export function single_pole_bandstop(freq: number, width: number, order = 1) {
     const poles = new Array(order).fill(root(complex(-width, freq * 2 * Math.PI), order));
-    return new IirContinuous(poles.concat([root(complex(-Infinity, -Infinity), -order)]), 1)
+    return new IirContinuous(poles.concat([root(complex(-1e12, 1e12), -order)]), 1)
 }
 
 export function single_pole_bandstop_prewarped(freq: number, width: number, order = 1) {

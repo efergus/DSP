@@ -136,7 +136,10 @@
 		bind:span={getSpan, setSpan}
 		bind:frequencySpan
 		sampleFilter={standardFilter}
-		onFilterChange={(value) => (filter = value)}
+		onFilterChange={(value) => {
+			filter = value;
+			console.log(filter);
+		}}
 		onFilteredData={(sample) => (filteredData = sample)}
 	>
 		{#if filter}

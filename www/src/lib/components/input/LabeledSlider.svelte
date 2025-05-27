@@ -53,6 +53,9 @@
 	};
 
 	const getSliderValue = (value: number) => {
+		if (isNaN(value)) {
+			return 0;
+		}
 		if (log) {
 			return Math.log(value);
 		}
@@ -60,7 +63,7 @@
 	};
 
 	const updateFromExternalChange = (value: number) => {
-		if (value !== trueValue) {
+		if (value !== trueValue && !isNaN(value)) {
 			tempValue = value;
 			trueValue = value;
 			textValue = cleanValue(value).toString();

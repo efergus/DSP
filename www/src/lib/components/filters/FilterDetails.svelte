@@ -3,12 +3,12 @@
 	import FrequencyResponse from './FrequencyResponse.svelte';
 	import TimeResponse from './TimeResponse.svelte';
 
-	const { filter }: { filter: IirDigital } = $props();
+	const { filter, samplerate }: { filter: IirDigital; samplerate: number } = $props();
 </script>
 
 <div>
 	<!-- <TimeResponse {filter} /> -->
-	<FrequencyResponse {filter} decibels />
+	<FrequencyResponse {filter} {samplerate} decibels />
 </div>
 
 <style lang="less">

@@ -5,12 +5,17 @@
 	import { throttle } from '$lib/input/debounce';
 	import Waveform from '../audio/Waveform.svelte';
 
-	const { filter, decibels }: { filter: IirDigital; decibels?: boolean } = $props();
+	const {
+		filter,
+		decibels,
+		samplerate
+	}: { filter: IirDigital; decibels?: boolean; samplerate: number } = $props();
 	// let canvas: HTMLCanvasElement = $state();
 
 	const samples = 128;
 	// let impulse = $state(new Float32Array(samples));
-	const frequencySpan = $derived(decibels ? span2d(0, 1, -50, 10) : span2d(0, 1, 0, 1));
+	let spanLimit = $state(span2d(0, samplerate / 2, -100, 100));
+	let frequencySpan = $state(decibels ? span2d(0, samplerate / 2, -50, 10) : span2d(0, 1, 0, 1));
 	let response = $state(new SampleView(new Float32Array(0)));
 	let phaseResponse = $state(new SampleView(new Float32Array(0)));
 
@@ -41,7 +46,15 @@
 </script>
 
 <div>
-	<Waveform data={response} span={frequencySpan} samplerate={samples} height={250} />
+	<Waveform
+		data={response}
+		bind:span={() => frequencySpan,
+		(newSpan) => {
+			frequencySpan = spanLimit.intersect(newSpan);
+		}}
+		samplerate={(samples / samplerate) * 2}
+		height={250}
+	/>
 	<!-- <Waveform data={phaseResponse} span={span2d(0, 1, -4, 4)} samplerate={samples} height={120} /> -->
 </div>
 
